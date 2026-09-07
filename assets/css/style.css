@@ -1,0 +1,997 @@
+/* ═══════════════════════════════════════════════
+   Instagram-Inspired UI Theme
+   ═══════════════════════════════════════════════ */
+
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --ig-blue: #0095f6;
+    --ig-blue-hover: #1877f2;
+    --ig-green: #00c853;
+    --ig-red: #ed4956;
+    --ig-bg: #fafafa;
+    --ig-card: #ffffff;
+    --ig-border: #dbdbdb;
+    --ig-text: #262626;
+    --ig-text-secondary: #8e8e8e;
+    --ig-gradient: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    color: var(--ig-text);
+    background-color: var(--ig-bg);
+    -webkit-font-smoothing: antialiased;
+}
+
+.theme-toggle {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 900;
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--ig-border);
+    border-radius: 50%;
+    background: var(--ig-card);
+    color: var(--ig-text);
+    box-shadow: 0 2px 8px rgba(38, 38, 38, 0.12);
+    cursor: pointer;
+    font-size: 1.1rem;
+}
+
+.theme-toggle:hover {
+    transform: translateY(-1px);
+}
+
+.theme-icon-sun {
+    display: none;
+}
+
+html[data-theme="dark"] .theme-icon-moon {
+    display: none;
+}
+
+html[data-theme="dark"] .theme-icon-sun {
+    display: inline;
+}
+
+/* Container */
+.container {
+    max-width: 470px;
+    margin: 0 auto;
+    padding: 24px 16px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.container-dashboard {
+    max-width: 960px;
+}
+
+.landing-container {
+    max-width: 470px;
+}
+
+.landing-header {
+    padding-top: 12px;
+}
+
+.landing-wordmark {
+    font-size: 2rem !important;
+    letter-spacing: -0.04em !important;
+}
+
+.text-gradient {
+    background: var(--ig-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.landing-hero {
+    padding: 28px 24px;
+    text-align: center;
+}
+
+.pill {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: #fff0f5;
+    color: #c2185b;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.landing-title {
+    margin: 18px 0 12px;
+    font-size: 2.2rem;
+    line-height: 1.08;
+    letter-spacing: -0.04em;
+}
+
+.landing-text {
+    margin: 0 auto 20px;
+    max-width: 370px;
+    color: var(--ig-text-secondary);
+    font-size: 0.9rem;
+}
+
+.landing-hero .btn,
+.landing-class-card .btn {
+    margin-top: 8px;
+}
+
+.card-heading {
+    margin-bottom: 16px;
+    font-size: 1rem;
+}
+
+.feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.feature-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.feature-icon {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--ig-bg);
+    font-size: 1.1rem;
+}
+
+.feature-row strong {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0.9rem;
+}
+
+.feature-row p {
+    color: var(--ig-text-secondary);
+    font-size: 0.8rem;
+}
+
+.landing-class-card .card-heading {
+    margin-top: 12px;
+}
+
+.landing-help {
+    text-align: center;
+}
+
+.container-calendar {
+    max-width: 960px;
+}
+
+.calendar-section {
+    margin-bottom: 28px;
+}
+
+.section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.section-heading h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+.training-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.training-card {
+    position: relative;
+    background: var(--ig-card);
+    border: 1px solid var(--ig-border);
+    border-radius: 12px;
+    padding: 20px 20px 18px;
+    box-shadow: 0 2px 8px rgba(38, 38, 38, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.training-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(38, 38, 38, 0.08);
+}
+
+.training-date-chip {
+    width: 48px;
+    height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    border-radius: 10px;
+    background: var(--ig-gradient);
+    color: #fff;
+    line-height: 1;
+}
+
+.training-date-chip span {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.training-date-chip strong {
+    color: #fff;
+    font-size: 1.25rem;
+    margin-top: 4px;
+}
+
+.training-card-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.training-kicker {
+    color: var(--ig-text-secondary) !important;
+    font-size: 0.68rem !important;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px !important;
+}
+
+.training-card h3 {
+    font-size: 1.05rem;
+    line-height: 1.3;
+}
+
+.training-card p {
+    color: var(--ig-text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.training-card strong {
+    color: var(--ig-text);
+}
+
+.training-card .btn {
+    margin-top: 8px;
+}
+
+@media (max-width: 560px) {
+    .container-calendar {
+        padding: 20px 12px;
+    }
+
+    .calendar-section {
+        margin-bottom: 22px;
+    }
+
+    .training-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .training-card {
+        padding: 16px;
+    }
+
+    .training-card .btn {
+        min-height: 44px;
+        margin-top: 10px;
+    }
+}
+
+/* Header */
+.header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.header h1 {
+    color: var(--ig-text);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+}
+
+.subtitle {
+    color: var(--ig-text-secondary);
+    font-size: 0.875rem;
+}
+
+/* Instagram Logo */
+.ig-logo {
+    font-size: 2rem;
+    margin-bottom: 8px;
+}
+
+/* Cards */
+.card {
+    background: var(--ig-card);
+    border: 1px solid var(--ig-border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+}
+
+/* Forms */
+.registration-form,
+.filters-form {
+    background: var(--ig-card);
+    border: 1px solid var(--ig-border);
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.form-group {
+    margin-bottom: 14px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    font-size: 0.8125rem;
+    color: var(--ig-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="tel"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--ig-border);
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    background: var(--ig-bg);
+    color: var(--ig-text);
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--ig-text-secondary);
+    background: #fff;
+}
+
+/* Inline validation error messages */
+.field-error {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: var(--ig-red);
+    line-height: 1.4;
+}
+
+.form-group input.field-error-border {
+    border-color: var(--ig-red);
+}
+
+.help-text {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: var(--ig-text-secondary);
+}
+
+/* Privacy Notice */
+.privacy-notice {
+    font-size: 0.8125rem;
+    color: var(--ig-text-secondary);
+    line-height: 1.5;
+    padding: 12px;
+    background: var(--ig-bg);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.privacy-notice a {
+    color: var(--ig-blue);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.privacy-notice a:hover {
+    text-decoration: underline;
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: all 0.2s;
+    line-height: 1.4;
+}
+
+.btn-primary {
+    background: var(--ig-blue);
+    color: white;
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 8px;
+}
+
+.btn-primary:hover {
+    background: var(--ig-blue-hover);
+}
+
+.btn-secondary {
+    background: var(--ig-bg);
+    color: var(--ig-text);
+    border: 1px solid var(--ig-border);
+}
+
+.btn-secondary:hover {
+    background: #efefef;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--ig-border);
+    color: var(--ig-text);
+}
+
+.btn-outline:hover {
+    background: var(--ig-bg);
+}
+
+/* Small WhatsApp button */
+.btn-whatsapp {
+    background: var(--ig-green);
+    color: white;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 7px 16px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-whatsapp:hover {
+    background: #00b84a;
+}
+
+.btn-whatsapp svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+
+/* Small action buttons */
+.btn-small {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.btn-group {
+    display: flex;
+    gap: 4px;
+    flex-wrap: nowrap;
+}
+
+.btn-danger {
+    background: var(--ig-bg);
+    color: var(--ig-red);
+    border: 1px solid var(--ig-border);
+}
+
+.btn-danger:hover {
+    background: #fff0f0;
+    border-color: var(--ig-red);
+}
+
+/* Alerts */
+.alert {
+    padding: 12px 14px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+}
+
+.alert-error {
+    background: #fff0f0;
+    border: 1px solid #ffcdd2;
+    color: var(--ig-red);
+}
+
+/* ═══════════════════════════════════════════════
+   Success / Confirmation Page
+   ═══════════════════════════════════════════════ */
+.success-content {
+    background: var(--ig-card);
+    border: 1px solid var(--ig-border);
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.confirmation-card {
+    margin-bottom: 20px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    margin-bottom: 16px;
+}
+
+.status-badge.success {
+    background: #e6f4ea;
+    color: #137333;
+}
+
+.class-details h2 {
+    color: var(--ig-text);
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.detail-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.detail-item {
+    display: flex;
+    gap: 8px;
+    font-size: 0.875rem;
+}
+
+.detail-item label {
+    font-weight: 600;
+    color: var(--ig-text-secondary);
+    min-width: 80px;
+    font-size: 0.8125rem;
+}
+
+/* Class details block on the registration page - read-only course info */
+.registration-class-details {
+    background: var(--ig-bg);
+    border: 1px solid var(--ig-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+}
+
+.class-details .detail-item a {
+    color: var(--ig-blue);
+    text-decoration: none;
+}
+
+.class-details .detail-item a:hover {
+    text-decoration: underline;
+}
+
+/* WhatsApp section on success page - compact */
+.whatsapp-section {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--ig-bg);
+    border-radius: 10px;
+    text-align: center;
+}
+
+.whatsapp-section h3 {
+    color: var(--ig-text);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.whatsapp-section p {
+    color: var(--ig-text-secondary);
+    font-size: 0.8125rem;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.recovery-notice {
+    padding: 14px;
+    background: #fff8e1;
+    border-radius: 10px;
+    border: 1px solid #ffe082;
+}
+
+.recovery-notice p {
+    font-size: 0.8125rem;
+    color: #5d4037;
+    line-height: 1.5;
+}
+
+.next-steps {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--ig-bg);
+    border-radius: 10px;
+}
+
+.next-steps h3 {
+    color: var(--ig-text);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.next-steps ol {
+    padding-left: 18px;
+}
+
+.next-steps li {
+    margin-bottom: 6px;
+    font-size: 0.8125rem;
+    color: var(--ig-text-secondary);
+}
+
+.actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+/* ═══════════════════════════════════════════════
+   Dashboard
+   ═══════════════════════════════════════════════ */
+.dashboard-content {
+    background: var(--ig-card);
+    border: 1px solid var(--ig-border);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.filters-section {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--ig-border);
+}
+
+.filters-form {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    padding: 0;
+    border: none;
+}
+
+.filter-group {
+    flex: 1;
+    min-width: 140px;
+}
+
+.filter-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+    font-size: 0.75rem;
+    color: var(--ig-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.filter-group input,
+.filter-group select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--ig-border);
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    background: var(--ig-bg);
+}
+
+.registrations-section h2 {
+    color: var(--ig-text);
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+/* Table */
+.registrations-section {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.registrations-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+    font-size: 0.8125rem;
+}
+
+.registrations-table th,
+.registrations-table td {
+    padding: 10px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--ig-border);
+}
+
+.registrations-table th {
+    color: var(--ig-text-secondary);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.registrations-table tr:hover {
+    background: var(--ig-bg);
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.badge-success {
+    background: #e6f4ea;
+    color: #137333;
+}
+
+.badge-warning {
+    background: #fff8e1;
+    color: #5d4037;
+}
+
+.badge-confirmed {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.badge-submitted {
+    background: var(--ig-bg);
+    color: var(--ig-text-secondary);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ig-text-secondary);
+    font-size: 0.875rem;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.65);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: var(--ig-card);
+    padding: 24px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 420px;
+    position: relative;
+}
+
+.modal-content h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--ig-text-secondary);
+    line-height: 1;
+}
+
+.close:hover {
+    color: var(--ig-text);
+}
+
+/* Footer */
+.footer {
+    margin-top: 20px;
+    text-align: center;
+    color: var(--ig-text-secondary);
+    font-size: 0.75rem;
+}
+
+.footer a {
+    color: var(--ig-blue);
+    text-decoration: none;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}
+
+/* Dark theme */
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --ig-bg: #0f1115;
+    --ig-card: #191d25;
+    --ig-border: #2b323f;
+    --ig-text: #e8eaee;
+    --ig-text-secondary: #9aa3b2;
+}
+
+html[data-theme="dark"] .alert-error {
+    background: rgba(237, 73, 86, 0.14);
+    border-color: rgba(237, 73, 86, 0.35);
+    color: #ff8a92;
+}
+
+html[data-theme="dark"] .badge-success {
+    background: rgba(46, 160, 67, 0.18);
+    color: #7ee2a0;
+}
+
+html[data-theme="dark"] .badge-warning,
+html[data-theme="dark"] .pill {
+    background: rgba(255, 179, 0, 0.14);
+    color: #ffcf70;
+}
+
+html[data-theme="dark"] .privacy-notice,
+html[data-theme="dark"] .registration-class-details,
+html[data-theme="dark"] .whatsapp-section,
+html[data-theme="dark"] .next-steps,
+html[data-theme="dark"] .feature-icon {
+    background: #232935;
+}
+
+html[data-theme="dark"] .btn-secondary:hover,
+html[data-theme="dark"] .btn-danger:hover {
+    background: #262c37;
+}
+
+html[data-theme="dark"] .form-group input:focus,
+html[data-theme="dark"] .form-group select:focus,
+html[data-theme="dark"] .form-group textarea:focus {
+    background: #232935;
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════════ */
+@media (max-width: 600px) {
+    .container {
+        padding: 16px 12px;
+    }
+
+    .header h1 {
+        font-size: 1.25rem;
+    }
+
+    .registration-form,
+    .success-content,
+    .dashboard-content {
+        padding: 16px;
+    }
+
+    .form-group {
+        margin-bottom: 12px;
+    }
+
+    .btn-primary {
+        padding: 10px;
+    }
+
+    .landing-hero {
+        padding: 22px 16px;
+    }
+
+    .landing-title {
+        font-size: 1.95rem;
+    }
+
+    .filters-form {
+        flex-direction: column;
+    }
+
+    .filter-group {
+        width: 100%;
+    }
+
+    .registrations-table {
+        font-size: 0.75rem;
+    }
+
+    .registrations-table th,
+    .registrations-table td {
+        padding: 8px 6px;
+    }
+
+    .btn-whatsapp {
+        padding: 6px 14px;
+        font-size: 0.75rem;
+    }
+
+    .btn-whatsapp svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .actions {
+        flex-direction: column;
+    }
+
+    .next-steps,
+    .whatsapp-section,
+    .recovery-notice {
+        padding: 14px;
+    }
+}
+
+@media (max-width: 380px) {
+    .header h1 {
+        font-size: 1.125rem;
+    }
+
+    .subtitle {
+        font-size: 0.8125rem;
+    }
+}

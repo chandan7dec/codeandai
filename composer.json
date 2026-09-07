@@ -1,0 +1,14 @@
+{
+  "name": "freebuff/php-registration",
+  "description": "Freebuff demo class registration system",
+  "type": "project",
+  "require": {
+    "php": ">=8.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.6"
+  },
+  "scripts": {
+    "test": "phpunit"
+  }
+}

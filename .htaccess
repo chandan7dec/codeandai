@@ -1,0 +1,78 @@
+# ============================================================
+# Apache URL Rewriting & Security
+# ============================================================
+
+# Enable mod_rewrite
+RewriteEngine On
+
+# Set the base directory
+RewriteBase /
+
+# Serve the Code & AI landing page at the domain root.
+DirectoryIndex index.php index.html
+
+# ── Force HTTPS (uncomment when SSL is active) ───────────────
+# Remove the # from the 3 lines below after enabling SSL
+# RewriteCond %{HTTPS} off
+# RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# ── Redirect www to non-www ─────────────────────────────────
+# RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+# RewriteRule ^ https://%{1}%{REQUEST_URI} [L,R=301]
+
+# ── HSTS (uncomment after confirming HTTPS works) ───────────
+# Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+# ── Security Headers ─────────────────────────────────────────
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# ── Block access to sensitive files ──────────────────────────
+# Block .env file
+<Files ".env">
+    Require all denied
+</Files>
+
+# Block .htaccess itself
+<Files ".htaccess">
+    Require all denied
+</Files>
+
+# Block includes directory
+RewriteRule ^includes/ - [F,L]
+
+# Block SQL directory
+RewriteRule ^sql/ - [F,L]
+
+# ── URL Routing ──────────────────────────────────────────────
+
+# Root is handled by DirectoryIndex (index.php); registration remains at /register.php.
+
+# Health check
+RewriteRule ^health\.?$ /health.php [L,QSA]
+
+# API endpoints
+RewriteRule ^api/demo-classes\.?$ /api_demo_classes.php [L,QSA]
+
+# Organizer routes
+RewriteRule ^organizer/dashboard\.?$ /organizer/dashboard.php [L,QSA]
+RewriteRule ^organizer/api/registrations\.?$ /organizer/api_registrations.php [L,QSA]
+RewriteRule ^organizer/api/registrations/([^/]+)/follow-up\.?$ /organizer/api_follow_up.php?registration_id=$1 [L,QSA]
+RewriteRule ^organizer/api/registrations/([^/]+)\.?$ /organizer/api_delete.php?registration_id=$1 [L,QSA]
+
+# WhatsApp routes
+RewriteRule ^whatsapp/redirect/([^/]+)\.?$ /whatsapp/redirect.php?id=$1 [L,QSA]
+RewriteRule ^whatsapp/status/([^/]+)\.?$ /whatsapp/status.php?id=$1 [L,QSA]
+
+# ── Static Files ─────────────────────────────────────────────
+# Serve static files directly
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ - [L]
+
+# ── Default: serve .php files ────────────────────────────────
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.+)$ /$1.php [L,QSA]

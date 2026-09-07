@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <div style="max-width:480px;margin:0 auto;padding:24px 16px;">
+        <div style="text-align:center;margin-bottom:24px;">
+            <h1 style="color:#262626;font-size:22px;font-weight:600;margin:0 0 8px 0;">Registration Confirmed ✅</h1>
+            <p style="color:#8e8e8e;font-size:14px;margin:0;">You're all set for the demo class!</p>
+        </div>
+
+        <div style="background:#ffffff;border:1px solid #dbdbdb;border-radius:12px;padding:24px;margin-bottom:16px;">
+            <p style="color:#262626;font-size:15px;margin:0 0 16px 0;">Hi <strong><?= $name ?></strong>,</p>
+
+            <p style="color:#262626;font-size:14px;line-height:1.6;margin:0 0 20px 0;">
+                Your registration has been confirmed. Here are your class details:
+            </p>
+
+            <div style="background:#fafafa;border-radius:8px;padding:16px;margin-bottom:20px;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <tr>
+                        <td style="padding:6px 0;font-size:13px;font-weight:600;color:#8e8e8e;width:100px;">Class</td>
+                        <td style="padding:6px 0;font-size:14px;color:#262626;"><?= $class_title ?></td>
+                    </tr>
+                    <?php if (!empty($training_topic)): ?>
+                    <tr>
+                        <td style="padding:6px 0;font-size:13px;font-weight:600;color:#8e8e8e;">Topic</td>
+                        <td style="padding:6px 0;font-size:14px;color:#262626;"><?= $training_topic ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (!empty($trainer_name)): ?>
+                    <tr>
+                        <td style="padding:6px 0;font-size:13px;font-weight:600;color:#8e8e8e;">Trainer</td>
+                        <td style="padding:6px 0;font-size:14px;color:#262626;"><?= $trainer_name ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <tr>
+                        <td style="padding:6px 0;font-size:13px;font-weight:600;color:#8e8e8e;">Date</td>
+                        <td style="padding:6px 0;font-size:14px;color:#262626;"><?= $scheduled_date ?></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:6px 0;font-size:13px;font-weight:600;color:#8e8e8e;">Timezone</td>
+                        <td style="padding:6px 0;font-size:14px;color:#262626;"><?= $timezone ?></td>
+                    </tr>
+                </table>
+            </div>
+
+            <?php if (!empty($teams_link)): ?>
+            <div style="text-align:center;margin-bottom:16px;">
+                <a href="<?= $teams_link ?>" style="display:inline-block;background:#0095f6;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 24px;border-radius:8px;">
+                    Join Teams Meeting
+                </a>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($whatsapp_group_url)): ?>
+            <div style="text-align:center;margin-bottom:8px;">
+                <a href="<?= $whatsapp_group_url ?>" style="display:inline-block;background:#25D366;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 24px;border-radius:8px;">
+                    Join <?= $whatsapp_group_name ?> WhatsApp Group
+                </a>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <div style="text-align:center;color:#8e8e8e;font-size:12px;padding:0 16px;">
+            <p style="margin:0;">This email was sent by <?= $app_name ?></p>
+        </div>
+    </div>
+</body>
+</html>
