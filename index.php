@@ -72,7 +72,7 @@ $whatsappName = WHATSAPP_GROUP_NAME;
 		<?php endif; ?>
 
 		<div class="whatsapp-section"><h3>Join Our <?= sanitize($whatsappName) ?> WhatsApp Group</h3><p>Get training updates, announcements, and reminders</p><a href="<?= sanitize($whatsappUrl) ?>" target="_blank" rel="noopener" class="btn btn-whatsapp">Join Group</a></div>
-		<footer class="footer"><p>Code &amp; AI · <a href="/training-calendar.php">View training calendar</a></p></footer>
+		<footer class="footer"><p>Code &amp; AI · <a href="/trainers.php">Our trainers</a> · <a href="/training-calendar.php">View training calendar</a></p></footer>
 	</main>
 </body>
 </html>

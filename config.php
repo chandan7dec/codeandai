@@ -37,9 +37,13 @@ function loadEnv($path) {
         $_ENV[$key] = $value;
     }
 }
-
-// Load from .env file in project root
-loadEnv(__DIR__ . '/.env');
+// Commnet this code in production
+// Load from .env file in project root. Prefer .env.local for local dev if present.
+if (file_exists(__DIR__ . '/.env.local')) {
+    loadEnv(__DIR__ . '/.env.local');
+} else {
+    loadEnv(__DIR__ . '/.env');
+}
 
 /**
  * Helper to get config value — reads from internal array first,
@@ -122,7 +126,7 @@ define('DEMO_CLASSES', [
     [
         'title' => 'Python for AI',
         'scheduled_at' => '2026-09-05 17:00:00',
-        'timezone' => 'India/New Delhi',
+        'timezone' => 'Asia/Kolkata',
         'teams_link' => 'https://teams.microsoft.com/l/meetup-join/19:meeting_demo1@thread.v2/0',
     ],
     [

@@ -908,6 +908,79 @@ html[data-theme="dark"] .btn-danger:hover {
     background: #262c37;
 }
 
+/* ═══════════════════════════════════════════════
+   Trainers
+   ═══════════════════════════════════════════════ */
+.trainer-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    position: relative;
+    background: var(--ig-bg);
+    border: 1px solid var(--ig-border);
+    display: grid;
+    place-items: center;
+}
+
+.trainer-avatar svg {
+    width: 64%;
+    height: 64%;
+    opacity: 0.55;
+}
+
+html[data-theme="dark"] .trainer-avatar svg circle,
+html[data-theme="dark"] .trainer-avatar svg path,
+html[data-theme="dark"] .trainer-avatar svg rect {
+    stroke: var(--ig-text-secondary);
+}
+
+.trainer-avatar .trainer-initials {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: var(--ig-gradient);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-radius: 999px;
+    letter-spacing: 0.03em;
+}
+
+.trainer-kicker {
+    color: var(--ig-text-secondary) !important;
+    font-size: 0.68rem !important;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px !important;
+}
+
+.trainer-card h3 {
+    font-size: 1.05rem;
+    line-height: 1.3;
+}
+
+.trainer-expertise {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0 4px;
+}
+
+.trainer-expertise span {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--ig-bg);
+    border: 1px solid var(--ig-border);
+    color: var(--ig-text-secondary);
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
 html[data-theme="dark"] .form-group input:focus,
 html[data-theme="dark"] .form-group select:focus,
 html[data-theme="dark"] .form-group textarea:focus {
