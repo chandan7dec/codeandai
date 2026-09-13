@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /**
  * Registration Page
  * 
@@ -15,12 +17,11 @@ require_once __DIR__ . '/includes/email_service.php';
 require_once __DIR__ . '/includes/class_management_service.php';
 
 // Start session FIRST (before any $_SESSION access)
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+secureSessionStart();
 
 // Ensure DB is initialized
 runStartup();
+sendSecurityHeaders();
 
 $formHeading = REGISTRATION_FORM_HEADING;
 $activeClass = (new ClassManagementService())->getOpenClass();
@@ -32,6 +33,20 @@ $formData = [
 ];
 
 if (isMethod('POST')) {
+    // ── CSRF check ──
+    if (!csrfVerify($_POST['csrf_token'] ?? null)) {
+        $error = "Your session expired. Please try again.";
+        if (DEBUG) {
+            error_log("[REG] CSRF token missing/invalid");
+        }
+    } else
+    // ── Rate limit: 5 submissions / 10 min per IP (blocks spam seat-filling) ──
+    if (!rateLimitRequest('register:' . clientIp(), 5, 600)) {
+        $error = "Too many attempts. Please wait a few minutes and try again.";
+        if (DEBUG) {
+            error_log("[REG] Rate limit exceeded for " . clientIp());
+        }
+    } else {
     // Get form data
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
@@ -68,7 +83,16 @@ if (isMethod('POST')) {
         try {
             $service = new RegistrationService();
             $result = $service->createRegistration($name, $email, $phone_number);
-            
+
+            // Paid class: hand over to the UPI payment page. The registration is
+            // created with status 'pending'; the email/WhatsApp flow only runs
+            // once the payment callback confirms the seat.
+            if (!empty($result['requires_payment'])) {
+                $_SESSION['payment_context'] = $result;
+                session_write_close();
+                redirectTo('/payment.php?order=' . urlencode($result['payment']['merchant_order_id']));
+            }
+
             // Send confirmation email (non-blocking)
             try {
                 if (DEBUG) {
@@ -118,6 +142,7 @@ if (isMethod('POST')) {
             }
         }
     }
+    } // end rate-limit/CSRF else
 }
 
 // Get registration result if coming from POST redirect
@@ -130,6 +155,11 @@ unset($_SESSION['registration_result']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#fafafa">
+    <meta name="description" content="Register for a live Code & AI training session — Python, AI tools and full-stack development, taught by industry experts.">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Register | Code & AI Live Training">
+    <meta property="og:description" content="Reserve your seat for the next live training session.">
+    <meta property="og:url" content="https://learnai.dpdns.org/register.php">
     <script src="/assets/js/theme.js"></script>
     <title>Register</title>
     <link rel="stylesheet" href="/assets/css/style.css">
@@ -180,6 +210,12 @@ unset($_SESSION['registration_result']);
                     <label>Date</label>
                     <span><?= sanitize(formatScheduledDate($activeClass['scheduled_at'], $activeClass['timezone'])) ?></span>
                 </div>
+                <?php if (!empty($activeClass['is_paid'])): ?>
+                <div class="detail-item">
+                    <label>Fee</label>
+                    <span class="price-tag">₹<?= number_format((float)$activeClass['price'], 2) ?></span>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
         <?php endif; ?>
@@ -190,6 +226,7 @@ unset($_SESSION['registration_result']);
 
         <?php if ($activeClass): ?>
         <form method="POST" action="/register.php" class="registration-form" novalidate>
+            <?= csrfField() ?>
             <div class="form-group">
                 <label for="name">Full Name</label>
                 <input
@@ -234,7 +271,14 @@ unset($_SESSION['registration_result']);
                 By registering, you agree to our <a href="/terms.php">Terms of Service</a> and <a href="/privacy.php">Privacy Policy</a>. We collect your name, email, and phone number for registration purposes only.
             </div>
 
+            <?php if (!empty($activeClass['is_paid'])): ?>
+            <div class="payment-hint">
+                This is a <strong>paid class</strong> (₹<?= number_format((float)$activeClass['price'], 2) ?>). After registering you will be taken to a secure UPI payment page to confirm your seat.
+            </div>
+            <button type="submit" class="btn btn-primary">Register &amp; Pay via UPI</button>
+            <?php else: ?>
             <button type="submit" class="btn btn-primary">Register Now</button>
+            <?php endif; ?>
         </form>
         <?php else: ?>
         <div class="alert alert-warning" role="status">Registration is currently closed. Please check back later.</div>

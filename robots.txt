@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /organizer/
+Disallow: /download.php
+Disallow: /payment.php
+Disallow: /success.php
+Disallow: /dashboard.php
+Disallow: /health.php
+Disallow: /api_demo_classes.php
+
+Sitemap: https://learnai.dpdns.org/sitemap.xml

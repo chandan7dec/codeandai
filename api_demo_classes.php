@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /**
  * API: List Active Demo Classes
  * 
@@ -13,6 +15,7 @@ require_once __DIR__ . '/includes/class_management_service.php';
 
 // Ensure DB is initialized
 runStartup();
+sendSecurityHeaders();
 
 if (!isMethod('GET')) {
     jsonResponse(['error' => 'Method not allowed'], 405);

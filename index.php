@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/class_management_service.php';
 
 runStartup();
+sendSecurityHeaders();
 $activeClass = (new ClassManagementService())->getOpenClass();
 $whatsappUrl = WHATSAPP_GROUP_INVITE_URL;
 $whatsappName = WHATSAPP_GROUP_NAME;
@@ -15,6 +18,11 @@ $whatsappName = WHATSAPP_GROUP_NAME;
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta name="theme-color" content="#fafafa">
+	<meta name="description" content="Live AI & software engineering trainings by industry experts. Join free and paid sessions on Python, AI tools, and full-stack development.">
+	<meta property="og:type" content="website">
+	<meta property="og:title" content="Code & AI | Live Training">
+	<meta property="og:description" content="Live AI & software engineering trainings by industry experts. Free and paid sessions on Python, AI tools, and full-stack development.">
+	<meta property="og:url" content="https://learnai.dpdns.org/">
 	<script src="/assets/js/theme.js"></script>
 	<title>Code &amp; AI | Live Training</title>
 	<link rel="stylesheet" href="/assets/css/style.css">
@@ -72,7 +80,7 @@ $whatsappName = WHATSAPP_GROUP_NAME;
 		<?php endif; ?>
 
 		<div class="whatsapp-section"><h3>Join Our <?= sanitize($whatsappName) ?> WhatsApp Group</h3><p>Get training updates, announcements, and reminders</p><a href="<?= sanitize($whatsappUrl) ?>" target="_blank" rel="noopener" class="btn btn-whatsapp">Join Group</a></div>
-		<footer class="footer"><p>Code &amp; AI · <a href="/trainers.php">Our trainers</a> · <a href="/training-calendar.php">View training calendar</a></p></footer>
+		<footer class="footer"><p>Code &amp; AI · <a href="/trainers.php">Our trainers</a> · <a href="/training-calendar.php">View training calendar</a> · <a href="/resources.php">Training resources</a></p></footer>
 	</main>
 </body>
 </html>

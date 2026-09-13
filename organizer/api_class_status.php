@@ -1,14 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/class_management_service.php';
 
 runStartup();
+sendSecurityHeaders();
 
-$apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
-if ($apiKey !== ORGANIZER_API_KEY) {
-    jsonResponse(['error' => 'Invalid API key'], 403);
+if (!organizerAuthenticated()) {
+    jsonResponse(['error' => 'Invalid API key. Log in at /login.php or pass api_key.'], 403);
 }
 if (!isMethod('POST')) {
     jsonResponse(['error' => 'Method not allowed'], 405);

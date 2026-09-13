@@ -47,6 +47,21 @@ RewriteRule ^includes/ - [F,L]
 # Block SQL directory
 RewriteRule ^sql/ - [F,L]
 
+# Block data directory (SQLite DB, logs, rate-limit store)
+RewriteRule ^data/ - [F,L]
+
+# Block organizer data directory
+RewriteRule ^organizer/data/ - [F,L]
+
+# Block dev-only directories (must not be deployed at all, defence in depth)
+RewriteRule ^tools/ - [F,L]
+RewriteRule ^tests/ - [F,L]
+
+# Block all dotenv variants (.env, .env.local, .env.production, ...)
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
+
 # ── URL Routing ──────────────────────────────────────────────
 
 # Root is handled by DirectoryIndex (index.php); registration remains at /register.php.

@@ -12,6 +12,7 @@ require_once __DIR__ . '/../includes/whatsapp_service.php';
 
 // Ensure DB is initialized
 runStartup();
+sendSecurityHeaders();
 
 $registrationId = $_GET['id'] ?? null;
 

@@ -185,7 +185,15 @@ All settings are configurable via environment variables or a `.env` file.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `SECRET_KEY` | `change-this-in-production` | Secret key for sessions |
-| `ORGANIZER_API_KEY` | `organizer-secret-key` | API key for organizer endpoints |
+| `ORGANIZER_API_KEY` | `organizer-secret-key` | API key for organizer endpoints — used at `/login.php` and accepted as `X-API-Key`/`?api_key=` |
+
+### Organizer Access
+
+- Open **`/login.php`**, enter your `ORGANIZER_API_KEY`, and you are logged in for the session (brute-force limited to 10 attempts / 10 minutes per IP).
+- Session login is preferred: the key never appears in URLs, browser history, or logs.
+- Log out with the footer link on the dashboard or `/logout.php`.
+- Programmatic access still works with `X-API-Key: <key>` header or `?api_key=<key>` query parameter.
+- For production, set a long random key (e.g. `php -r "echo bin2hex(random_bytes(24));"`).
 
 ### Registration Form
 
@@ -216,6 +224,56 @@ The course catalog (`DEMO_CLASSES` in `config.php`) holds title, date, timezone,
 | `SMTP_FROM_EMAIL` | (empty) | Sender email address |
 | `SMTP_FROM_NAME` | `Freebuff Registration` | Sender display name |
 
+### UPI Payments (Paid Classes)
+
+Direct UPI integration — no third-party payment gateway fees.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `UPI_MERCHANT_VPA` | `merchant@upi` | Merchant UPI ID that receives payments |
+| `UPI_MERCHANT_NAME` | `Freebuff Classes` | Payee name shown in UPI apps |
+| `UPI_CALLBACK_SECRET` | (change it!) | Shared secret for HMAC-SHA256 callback verification — must match your UPI provider's configuration |
+| `UPI_PAYMENT_TIMEOUT_MINUTES` | `15` | Unpaid payment requests expire after this; seats are released |
+| `UPI_CALLBACK_URL` | `BASE_URL/organizer/upi-callback.php` | Public URL that receives payment callbacks (use ngrok or similar for local testing) |
+
+### Paid Classes & UPI Payment Flow
+
+1. **Admin creates a paid class** on the organizer dashboard (tick "Is Paid", enter a price > 0) and opens registration.
+2. **User registers** on `/register.php` — paid classes show the fee and a "Register & Pay via UPI" button.
+3. **Payment page** (`/payment.php`) shows a scannable dynamic UPI QR code, the amount, and the order ID. The page polls for payment status automatically.
+4. **User pays** with any UPI app. The UPI network POSTs a signed callback to `UPI_CALLBACK_URL`.
+5. **Callback verification**: the endpoint verifies the HMAC-SHA256 signature, validates the amount, applies idempotency (duplicate `txnId` is ignored), then confirms the registration and releases the receipt.
+6. **Failure / expiry**: failed, cancelled, or 15-minute-expired payments cancel the pending registration and release the seat; users can retry via "Retry Payment".
+7. **Reconciliation**: for missed callbacks, admins can "Mark Paid" / "Mark Failed" directly from the payment logs table on the organizer dashboard.
+
+**QR code generation**: self-contained pure-PHP encoder in `includes/lib/qr_encoder.php` (QR Model 2, byte mode, ECC L, versions 1–7, ≤ 156 bytes) — verified bit-identical against reference implementations. If you prefer composer, `composer require chillerlan/php-qrcode` also works: swap the encoder call in `includes/upi_service.php` (`generateUpiQrCode()`).
+
+### Testing
+
+```bash
+# With composer:
+composer install && vendor/bin/phpunit
+
+# Without composer (fallback runner, same test classes):
+php tools/run_tests.php          # all suites
+php tools/run_tests.php unit
+php tools/run_tests.php integration
+```
+
+Tests run on a SQLite in-memory database — no local MySQL needed.
+
+---
+
+## Training Resources
+
+Recordings and materials for past trainings, shown on `/resources.php`.
+
+- **Recordings** are hosted on your dedicated YouTube channel (unlisted works fine — only the 11-char video ID is stored). Paste any YouTube URL shape; the app extracts the ID. The public page uses a fast thumbnail facade — the player loads only on click.
+- **Slides/PDF** are hosted on **Google Drive** (no load on this server). In Drive: share the file as **"Anyone with the link → Viewer"**, copy the share link, and paste it. The app converts it to a direct-download link.
+- **Gating**: free-class materials are open to everyone. **Paid-class materials require the email used at registration** (must have a confirmed registration) — entered via an inline "Unlock downloads" form, verified server-side on every download. Download counts are tracked per resource.
+- **Managing**: organizer dashboard → **Training Resources** section (pick class, type, paste link, publish/hidden, delete). Resources for a class become publicly visible on the resources page only after the class date has passed.
+- APIs: `organizer/api_training_resources.php` (GET/POST/PUT/DELETE + `POST ?action=publish`), protected by the organizer API key.
+
 ---
 
 ## API Reference
@@ -226,13 +284,26 @@ The course catalog (`DEMO_CLASSES` in `config.php`) holds title, date, timezone,
 |--------|------|-------------|
 | `GET` | `/register.php` | Registration form page |
 | `POST` | `/register.php` | Submit registration (form data) |
+| `GET` | `/payment.php?order={merchant_order_id}` | UPI payment page (QR code) for a paid class |
+| `GET` | `/dashboard.php?email={email}` | User dashboard: enrolled classes + payment history |
 | `GET` | `/health.php` | Health check (returns JSON) |
 | `GET` | `/api_demo_classes.php` | List active demo classes (JSON) |
 | `GET` | `/training-calendar.php` | View active and upcoming training details |
+| `GET` | `/resources.php` | Training Resources: past-session recordings (YouTube) + slides/PDF (Google Drive) |
+| `GET` | `/download.php?id={resource_id}&email={email}` | Download a resource. Paid-class files require the attendee's registration email; free-class files are open. Redirects to Google Drive |
+
+### Payment Endpoints
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/organizer/upi-callback.php` | UPI payment callback (HMAC-SHA256 signed, rate limited, idempotent) |
+| `GET` | `/organizer/api_payment_status.php?order={merchant_order_id}` | Payment status (polled by the payment page) |
+| `POST` | `/organizer/api_payment_reconcile.php?payment_id={id}` | Admin reconciliation override (`{"status":"success or failed"}`) |
 
 ### Organizer Endpoints
 
-> **Authentication**: Pass `X-API-Key` header or `?api_key=...` query parameter
+> **Authentication** (either works):
+> 1. **Session login (recommended)** — log in once at `/login.php` with your organizer API key; the cookie authenticates the dashboard and all organizer APIs. Log out via `/logout.php` (link also in the dashboard footer).
+> 2. **API key** — pass `X-API-Key` header or `?api_key=...` query parameter (kept for scripts and existing bookmarks).
 
 | Method | Path | Description |
 |--------|------|-------------|

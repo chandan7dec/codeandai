@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /**
  * Database Connection & Initialization
  * 
@@ -6,6 +8,7 @@
  */
 
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/security_headers.php';
 
 /**
  * Get a database connection (MySQLi or PDO for SQLite)
@@ -21,7 +24,9 @@ function getDB() {
     
     // SQLite mode
     if (DB_HOST === 'sqlite' || DB_HOST === '') {
-        $dbPath = defined('DB_SQLITE_PATH') ? DB_SQLITE_PATH : __DIR__ . '/../data/demo_class.db';
+        $dbPath = defined('DB_SQLITE_PATH')
+            ? DB_SQLITE_PATH
+            : (config('DB_SQLITE_PATH', '') ?: __DIR__ . '/../data/demo_class.db');
         $dir = dirname($dbPath);
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
@@ -318,11 +323,261 @@ function migrateLegacyColumns(): void {
 }
 
 /**
+ * Add paid-class attributes (is_paid, price) to demo_classes and extend
+ * the registrations status enum with 'pending' for payment-in-progress
+ * registrations (MySQL only; SQLite stores TEXT so any value is accepted).
+ *
+ * Idempotent: safe to run on every request.
+ */
+function migratePaidClasses(): void {
+    $conn = getDB();
+
+    if ($conn instanceof PDO) {
+        $columns = [];
+        foreach ($conn->query('PRAGMA table_info(demo_classes)') as $column) {
+            $columns[] = $column['name'];
+        }
+        if (!in_array('is_paid', $columns, true)) {
+            $conn->exec('ALTER TABLE demo_classes ADD COLUMN is_paid INTEGER NOT NULL DEFAULT 0');
+        }
+        if (!in_array('price', $columns, true)) {
+            $conn->exec("ALTER TABLE demo_classes ADD COLUMN price DECIMAL(10,2) NOT NULL DEFAULT 0.00");
+        }
+        $conn->exec('CREATE INDEX IF NOT EXISTS idx_is_paid ON demo_classes (is_paid)');
+        return;
+    }
+
+    $columns = [];
+    $result = $conn->query('SHOW COLUMNS FROM demo_classes');
+    while ($result && ($column = $result->fetch_assoc())) {
+        $columns[] = $column['Field'];
+    }
+    if (!in_array('is_paid', $columns, true)) {
+        $conn->query('ALTER TABLE demo_classes ADD COLUMN is_paid TINYINT(1) NOT NULL DEFAULT 0');
+    }
+    if (!in_array('price', $columns, true)) {
+        $conn->query('ALTER TABLE demo_classes ADD COLUMN price DECIMAL(10,2) NOT NULL DEFAULT 0.00');
+    }
+    $indexExists = false;
+    $indexes = $conn->query("SHOW INDEX FROM demo_classes WHERE Key_name = 'idx_is_paid'");
+    if ($indexes && $indexes->num_rows > 0) {
+        $indexExists = true;
+    }
+    if (!$indexExists) {
+        $conn->query('CREATE INDEX idx_is_paid ON demo_classes (is_paid)');
+    }
+
+    // registrations.registration_status gains 'pending' for unpaid paid-class registrations.
+    $statusResult = $conn->query("SHOW COLUMNS FROM registrations LIKE 'registration_status'");
+    $statusRow = $statusResult ? $statusResult->fetch_assoc() : null;
+    if ($statusRow && strpos((string)$statusRow['Type'], 'pending') === false) {
+        $conn->query(
+            "ALTER TABLE registrations MODIFY registration_status ENUM('submitted','confirmed','failed_delivery','cancelled','pending') NOT NULL DEFAULT 'submitted'"
+        );
+    }
+}
+
+/**
+ * Create the payments table used to track UPI transactions.
+ *
+ * Note on transaction_id: it is NULL until the UPI network assigns the
+ * transaction id via callback. MySQL UNIQUE keys allow multiple NULLs, so
+ * uniqueness of real transaction ids is still enforced (data-model.md).
+ *
+ * Idempotent: safe to run on every request.
+ */
+function migratePayments(): void {
+    $conn = getDB();
+
+    if ($conn instanceof PDO) {
+        $conn->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS payments (
+                id VARCHAR(36) NOT NULL PRIMARY KEY,
+                transaction_id VARCHAR(64) NULL DEFAULT NULL,
+                merchant_order_id VARCHAR(64) NOT NULL,
+                user_id VARCHAR(36) NOT NULL,
+                class_id VARCHAR(36) NOT NULL,
+                registration_id VARCHAR(36) NULL DEFAULT NULL,
+                amount DECIMAL(10,2) NOT NULL,
+                currency CHAR(3) NOT NULL DEFAULT 'INR',
+                payment_method VARCHAR(20) NOT NULL DEFAULT 'UPI',
+                status VARCHAR(20) NOT NULL DEFAULT 'initiated'
+                    CHECK (status IN ('initiated','pending','success','failed','expired','refunded')),
+                payer_vpa VARCHAR(100) NULL DEFAULT NULL,
+                raw_response TEXT NULL DEFAULT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                admin_note TEXT NULL DEFAULT NULL
+            )
+        SQL);
+        $conn->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_transaction_id ON payments (transaction_id)');
+        $conn->exec('CREATE INDEX IF NOT EXISTS idx_payments_merchant_order_id ON payments (merchant_order_id)');
+        $conn->exec('CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments (user_id)');
+        $conn->exec('CREATE INDEX IF NOT EXISTS idx_payments_class_id ON payments (class_id)');
+        $conn->exec('CREATE INDEX IF NOT EXISTS idx_payments_status ON payments (status)');
+        $conn->exec('CREATE INDEX IF NOT EXISTS idx_payments_registration_id ON payments (registration_id)');
+        $conn->exec('CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments (created_at)');
+        return;
+    }
+
+    $conn->query(<<<'SQL'
+        CREATE TABLE IF NOT EXISTS payments (
+            id VARCHAR(36) NOT NULL PRIMARY KEY,
+            transaction_id VARCHAR(64) NULL DEFAULT NULL,
+            merchant_order_id VARCHAR(64) NOT NULL,
+            user_id VARCHAR(36) NOT NULL,
+            class_id VARCHAR(36) NOT NULL,
+            registration_id VARCHAR(36) NULL DEFAULT NULL,
+            amount DECIMAL(10,2) NOT NULL,
+            currency CHAR(3) NOT NULL DEFAULT 'INR',
+            payment_method VARCHAR(20) NOT NULL DEFAULT 'UPI',
+            status ENUM('initiated','pending','success','failed','expired','refunded') NOT NULL DEFAULT 'initiated',
+            payer_vpa VARCHAR(100) NULL DEFAULT NULL,
+            raw_response JSON NULL DEFAULT NULL,
+            admin_note TEXT NULL DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY idx_payments_transaction_id (transaction_id),
+            INDEX idx_payments_merchant_order_id (merchant_order_id),
+            INDEX idx_payments_user_id (user_id),
+            INDEX idx_payments_class_id (class_id),
+            INDEX idx_payments_status (status),
+            INDEX idx_payments_registration_id (registration_id),
+            INDEX idx_payments_created_at (created_at),
+            CONSTRAINT fk_payments_user FOREIGN KEY (user_id) REFERENCES registrants (id) ON DELETE CASCADE,
+            CONSTRAINT fk_payments_class FOREIGN KEY (class_id) REFERENCES demo_classes (id) ON DELETE CASCADE,
+            CONSTRAINT fk_payments_registration FOREIGN KEY (registration_id) REFERENCES registrations (id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    SQL);
+}
+
+/**
+ * Roll back the paid-classes & payments migration (T043).
+ *
+ * Drops the payments table, the is_paid/price columns and their index.
+ * Intended for manual/ops use — runStartup() never calls this.
+ */
+function rollbackPaidClassesAndPayments(): void {
+    $conn = getDB();
+
+    if ($conn instanceof PDO) {
+        $conn->exec('DROP TABLE IF EXISTS payments');
+        try {
+            $conn->exec('DROP INDEX IF EXISTS idx_is_paid');
+        } catch (Exception $e) {
+            if (DEBUG) {
+                error_log('[DB] Rollback warning: ' . $e->getMessage());
+            }
+        }
+        $columns = [];
+        foreach ($conn->query('PRAGMA table_info(demo_classes)') as $column) {
+            $columns[] = $column['name'];
+        }
+        foreach (['price', 'is_paid'] as $column) {
+            if (in_array($column, $columns, true)) {
+                try {
+                    // Requires SQLite >= 3.35
+                    $conn->exec("ALTER TABLE demo_classes DROP COLUMN $column");
+                } catch (Exception $e) {
+                    if (DEBUG) {
+                        error_log('[DB] Rollback warning: ' . $e->getMessage());
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+    $conn->query('DROP TABLE IF EXISTS payments');
+    $conn->query('ALTER TABLE demo_classes DROP INDEX idx_is_paid');
+    $conn->query('ALTER TABLE demo_classes DROP COLUMN price');
+    $conn->query('ALTER TABLE demo_classes DROP COLUMN is_paid');
+}
+
+/**
+ * Training resources (recordings + slides/PDF documents) per class.
+ *
+ * - recordings reference a dedicated YouTube channel video (unlisted/public);
+ *   only the 11-char video id is stored, embeds point at youtube-nocookie.com
+ * - slides/pdf reference a Google Drive file; drive_file_id is extracted from
+ *   the share link and downloads redirect to Drive (zero server bandwidth)
+ * - paid-class resources are gated to attendees by email (download.php)
+ *
+ * Idempotent: safe to run on every request.
+ */
+function migrateTrainingResources(): void {
+    $conn = getDB();
+
+    if ($conn instanceof PDO) {
+        $conn->exec(<<<'SQL'
+            CREATE TABLE IF NOT EXISTS training_resources (
+                id VARCHAR(36) NOT NULL PRIMARY KEY,
+                class_id VARCHAR(36) NOT NULL,
+                type VARCHAR(20) NOT NULL
+                    CHECK (type IN ('recording','slides','pdf')),
+                title VARCHAR(255) NOT NULL,
+                youtube_video_id VARCHAR(20) NULL DEFAULT NULL,
+                drive_file_id VARCHAR(64) NULL DEFAULT NULL,
+                file_name VARCHAR(255) NULL DEFAULT NULL,
+                file_size_label VARCHAR(20) NULL DEFAULT NULL,
+                download_count INTEGER NOT NULL DEFAULT 0,
+                is_published INTEGER NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        SQL);
+        $conn->exec('CREATE INDEX IF NOT EXISTS idx_training_resources_class_id ON training_resources (class_id)');
+        $conn->exec('CREATE INDEX IF NOT EXISTS idx_training_resources_published ON training_resources (is_published)');
+        return;
+    }
+
+    $conn->query(<<<'SQL'
+        CREATE TABLE IF NOT EXISTS training_resources (
+            id VARCHAR(36) NOT NULL PRIMARY KEY,
+            class_id VARCHAR(36) NOT NULL,
+            type ENUM('recording','slides','pdf') NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            youtube_video_id VARCHAR(20) NULL DEFAULT NULL,
+            drive_file_id VARCHAR(64) NULL DEFAULT NULL,
+            file_name VARCHAR(255) NULL DEFAULT NULL,
+            file_size_label VARCHAR(20) NULL DEFAULT NULL,
+            download_count INT NOT NULL DEFAULT 0,
+            is_published TINYINT(1) NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_training_resources_class_id (class_id),
+            INDEX idx_training_resources_published (is_published),
+            CONSTRAINT fk_training_resources_class FOREIGN KEY (class_id) REFERENCES demo_classes (id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    SQL);
+}
+
+/**
+ * Roll back the training-resources migration.
+ *
+ * Drops the training_resources table. Intended for manual/ops use —
+ * runStartup() never calls this.
+ */
+function rollbackTrainingResources(): void {
+    $conn = getDB();
+
+    if ($conn instanceof PDO) {
+        $conn->exec('DROP TABLE IF EXISTS training_resources');
+        return;
+    }
+
+    $conn->query('DROP TABLE IF EXISTS training_resources');
+}
+
+/**
  * Run startup tasks (init DB, migrations, seed data)
  */
 function runStartup(): void {
     initDB();
     migrateLegacyColumns();
     migrateDemoClassManagement();
+    migratePaidClasses();
+    migratePayments();
+    migrateTrainingResources();
     seedDemoClasses();
 }

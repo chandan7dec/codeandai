@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /**
  * Registration Service
  * 
@@ -9,6 +11,7 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/class_management_service.php';
+require_once __DIR__ . '/upi_service.php';
 
 class RegistrationService {
     private $db;
@@ -181,30 +184,57 @@ class RegistrationService {
                 throw new InvalidArgumentException('This class is full. Please choose another class.');
             }
 
-            // Check for duplicate registration
+            // Check for duplicate registration (cancelled ones allow retry)
             $existing = $this->checkDuplicate($email, $phone, $demoClass['id']);
             if ($existing) {
                 throw new InvalidArgumentException(
                     "You are already registered for this class. Please check your email for confirmation details."
                 );
             }
-        
-        // Get or create registrant
-        $registrant = $this->getOrCreateRegistrant($name, $email, $phone, $whatsappConsent);
-        
-        // Generate duplicate key
-        $duplicateKey = generateDuplicateKey($email, $phone, $demoClass['id']);
-        
-        // Create registration
-        $registrationId = generateUUID();
-        $now = utcnow();
-        
-        $this->execute(
-            "INSERT INTO registrations (id, registrant_id, demo_class_id, registration_status, confirmation_message, duplicate_key, submitted_at, created_at, updated_at) 
-             VALUES (?, ?, ?, 'confirmed', 'Registration confirmed successfully', ?, ?, ?, ?)",
-            [$registrationId, $registrant['id'], $demoClass['id'], $duplicateKey, $now, $now, $now],
-            'sssssss'
-        );
+
+            // Paid classes hold the seat with a pending registration until the
+            // UPI payment succeeds; free classes are confirmed immediately.
+            $isPaid = (int)($demoClass['is_paid'] ?? 0) === 1;
+            $price = (float)($demoClass['price'] ?? 0);
+            $registrationStatus = $isPaid ? 'pending' : 'confirmed';
+            $confirmationMessage = $isPaid ? 'Payment pending - complete the UPI payment to confirm your seat' : 'Registration confirmed successfully';
+
+            // Get or create registrant
+            $registrant = $this->getOrCreateRegistrant($name, $email, $phone, $whatsappConsent);
+
+            // Generate duplicate key
+            $duplicateKey = generateDuplicateKey($email, $phone, $demoClass['id']);
+
+            // Create registration
+            $registrationId = generateUUID();
+            $now = utcnow();
+
+            $this->execute(
+                "INSERT INTO registrations (id, registrant_id, demo_class_id, registration_status, confirmation_message, duplicate_key, submitted_at, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                [$registrationId, $registrant['id'], $demoClass['id'], $registrationStatus, $confirmationMessage, $duplicateKey, $now, $now, $now],
+                'ssssssss'
+            );
+
+            // For paid classes also create the payment record inside the same
+            // transaction so capacity locking covers the seat + payment together.
+            $payment = null;
+            if ($isPaid) {
+                $paymentId = generateUUID();
+                $merchantOrderId = 'ORD_' . strtoupper(bin2hex(random_bytes(9)));
+                $this->execute(
+                    "INSERT INTO payments (id, transaction_id, merchant_order_id, user_id, class_id, registration_id, amount, currency, payment_method, status, created_at, updated_at)
+                     VALUES (?, NULL, ?, ?, ?, ?, ?, 'INR', 'UPI', 'initiated', ?, ?)",
+                    [$paymentId, $merchantOrderId, $registrant['id'], $demoClass['id'], $registrationId, number_format($price, 2, '.', ''), $now, $now],
+                    'ssssssss'
+                );
+                $payment = [
+                    'id' => $paymentId,
+                    'merchant_order_id' => $merchantOrderId,
+                    'amount' => number_format($price, 2, '.', ''),
+                    'status' => 'initiated',
+                ];
+            }
         
         // Record consent if given
         if ($whatsappConsent) {
@@ -223,8 +253,8 @@ class RegistrationService {
             $result = [
             'registration' => [
                 'id' => $registrationId,
-                'status' => 'confirmed',
-                'message' => 'Registration confirmed successfully',
+                'status' => $registrationStatus,
+                'message' => $confirmationMessage,
             ],
             'demo_class' => [
                 'id' => $demoClass['id'],
@@ -235,7 +265,18 @@ class RegistrationService {
             ],
             'whatsapp_consent' => $whatsappConsent,
             'whatsapp_redirect_url' => "/whatsapp/redirect.php?id=$registrationId",
+            'requires_payment' => $isPaid,
             ];
+
+            if ($isPaid && $payment !== null) {
+                // QR generation happens after the DB work (CPU-heavy, no I/O).
+                $result['payment'] = $payment + [
+                    'qr_code' => UpiService::generateUpiQrCode($payment['merchant_order_id'], $price, $demoClass['id']),
+                    'upi_payload' => UpiService::buildUpiPayload($payment['merchant_order_id'], $price),
+                    'callback_url' => UPI_CALLBACK_URL,
+                    'timeout_minutes' => UPI_PAYMENT_TIMEOUT_MINUTES,
+                ];
+            }
             if ($this->db instanceof PDO) {
                 $this->db->commit();
             } else {
@@ -284,7 +325,7 @@ class RegistrationService {
      */
     public function getRegistrations(?string $demoClassId = null, ?bool $whatsappConsent = null, ?string $search = null, ?string $status = null): array {
         $sql = "SELECT r.*, reg.name as registrant_name, reg.email as registrant_email, reg.phone_number, 
-                       reg.consented_to_whatsapp, dc.title as class_title
+                       reg.consented_to_whatsapp, dc.title as class_title, dc.timezone
                 FROM registrations r
                 JOIN registrants reg ON r.registrant_id = reg.id
                 JOIN demo_classes dc ON r.demo_class_id = dc.id

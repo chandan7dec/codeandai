@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /**
  * API: Delete Registration
  * 
@@ -12,11 +14,11 @@ require_once __DIR__ . '/../includes/registration_service.php';
 
 // Ensure DB is initialized
 runStartup();
+sendSecurityHeaders();
 
-// Verify API key
-$apiKey = $_SERVER['HTTP_X_API_KEY'] ?? $_GET['api_key'] ?? '';
-if ($apiKey !== ORGANIZER_API_KEY) {
-    jsonResponse(['error' => 'Invalid API key'], 403);
+// Verify access: session login OR API key (constant-time compare inside).
+if (!organizerAuthenticated()) {
+    jsonResponse(['error' => 'Invalid API key. Log in at /login.php or pass api_key.'], 403);
 }
 
 if (!isMethod('DELETE') && !isMethod('POST')) {

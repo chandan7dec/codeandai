@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /**
  * Success / Confirmation Page
  * 
@@ -8,10 +10,11 @@
 
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/security_headers.php';
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+sendSecurityHeaders();
+
+secureSessionStart();
 
 $registration = $_SESSION['registration_result'] ?? null;
 
@@ -24,6 +27,7 @@ $reg = $registration['registration'];
 $demoClass = $registration['demo_class'];
 $whatsappConsent = $registration['whatsapp_consent'] ?? false;
 $whatsappRedirectUrl = $registration['whatsapp_redirect_url'] ?? null;
+$receipt = $registration['payment_receipt'] ?? null;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -83,8 +87,43 @@ $whatsappRedirectUrl = $registration['whatsapp_redirect_url'] ?? null;
                             <a href="<?= sanitize($demoClass['teams_link']) ?>" target="_blank" rel="noopener">Join Teams Meeting</a>
                         </div>
                         <?php endif; ?>
+                        <?php $calLink = googleCalendarLink($demoClass); if ($calLink): ?>
+                        <div class="detail-item">
+                            <label>Reminder</label>
+                            <a href="<?= sanitize($calLink) ?>" target="_blank" rel="noopener">+ Add to Google Calendar</a>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
+
+                <?php if ($receipt): ?>
+                <div class="receipt-section">
+                    <h3>Payment Receipt</h3>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <label>Transaction ID</label>
+                            <span><?= sanitize((string)($receipt['transaction_id'] ?? '-')) ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Order ID</label>
+                            <span><?= sanitize((string)$receipt['merchant_order_id']) ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Amount Paid</label>
+                            <span>₹<?= sanitize(number_format((float)$receipt['amount'], 2)) ?> <?= sanitize((string)$receipt['currency']) ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Method</label>
+                            <span><?= sanitize((string)$receipt['payment_method']) ?><?= !empty($receipt['payer_vpa']) ? ' from ' . sanitize((string)$receipt['payer_vpa']) : '' ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <label>Date</label>
+                            <span><?= sanitize((string)$receipt['created_at']) ?> UTC</span>
+                        </div>
+                    </div>
+                    <p class="help-text" style="margin-top:8px;">You can download this receipt anytime from your <a href="/dashboard.php">dashboard</a>.</p>
+                </div>
+                <?php endif; ?>
 
                 <div class="whatsapp-section">
                     <h3>Join Our <?= sanitize(WHATSAPP_GROUP_NAME) ?> WhatsApp Group</h3>

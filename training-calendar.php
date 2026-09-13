@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/class_management_service.php';
 
 runStartup();
+sendSecurityHeaders();
 $calendar = (new ClassManagementService())->getCalendarClasses();
 
 function renderTrainingCard(array $training): void {
@@ -27,6 +30,7 @@ function renderTrainingCard(array $training): void {
         <p><strong>When:</strong> <?= sanitize(formatScheduledDate($training['scheduled_at'], $training['timezone'])) ?></p>
         <p><strong>Availability:</strong> <?= $training['capacity'] === null ? 'Unlimited' : (int)$training['remaining_capacity'] . ' seats remaining' ?></p>
         <?php if ($isOpen): ?><a class="btn btn-primary" href="/register.php">Register</a><?php endif; ?>
+        <?php $calLink = googleCalendarLink($training); if ($calLink): ?><a class="btn btn-secondary" href="<?= sanitize($calLink) ?>" target="_blank" rel="noopener">+ Google Calendar</a><?php endif; ?>
     </article>
     <?php
 }
@@ -37,8 +41,13 @@ function renderTrainingCard(array $training): void {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#fafafa">
+    <meta name="description" content="Upcoming live training sessions on Python, AI tools and software engineering. See dates, trainers and topics — free and paid sessions.">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Training Calendar | Code & AI">
+    <meta property="og:description" content="Upcoming live training sessions on Python, AI tools and software engineering. See dates, trainers and topics.">
+    <meta property="og:url" content="https://learnai.dpdns.org/training-calendar.php">
     <script src="/assets/js/theme.js"></script>
-    <title>Training Calendar</title>
+    <title>Training Calendar | Code & AI</title>
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body>
@@ -68,7 +77,7 @@ function renderTrainingCard(array $training): void {
             <?php if ($calendar['upcoming']): ?><div class="training-grid"><?php foreach ($calendar['upcoming'] as $training) renderTrainingCard($training); ?></div>
             <?php else: ?><p class="empty-state">No upcoming training sessions.</p><?php endif; ?>
         </section>
-        <footer class="footer"><a href="/register.php">Go to registration</a></footer>
+        <footer class="footer"><a href="/resources.php">Training Resources</a> · <a href="/register.php">Go to registration</a></footer>
     </main>
 </body>
 </html>

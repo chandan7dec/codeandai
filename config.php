@@ -1,4 +1,6 @@
 <?php
+
+declare(strict_types=1);
 /**
  * Application Configuration
  * 
@@ -108,6 +110,13 @@ define('ACTIVE_COURSE_INDEX', (int)config('ACTIVE_COURSE_INDEX', 0));
 define('WHATSAPP_GROUP_INVITE_URL', config('WHATSAPP_GROUP_INVITE_URL', 'https://chat.whatsapp.com/DsI4j6teaeU72QknuAcX8b'));
 define('WHATSAPP_GROUP_NAME', config('WHATSAPP_GROUP_NAME', 'LearnAI'));
 define('WHATSAPP_REDIRECT_BASE', config('WHATSAPP_REDIRECT_BASE', 'https://wa.me'));
+
+// ── UPI Payments (direct UPI integration, no gateway) ───────
+define('UPI_MERCHANT_VPA', config('UPI_MERCHANT_VPA', 'merchant@upi'));
+define('UPI_MERCHANT_NAME', config('UPI_MERCHANT_NAME', 'Freebuff Classes'));
+define('UPI_CALLBACK_SECRET', config('UPI_CALLBACK_SECRET', 'change-this-callback-secret'));
+define('UPI_PAYMENT_TIMEOUT_MINUTES', (int)config('UPI_PAYMENT_TIMEOUT_MINUTES', 15));
+define('UPI_CALLBACK_URL', config('UPI_CALLBACK_URL', BASE_URL . '/organizer/upi-callback.php'));
 
 // ── Email (SendGrid via SMTP) ────────────────────────────────
 define('ENABLE_EMAIL', config('ENABLE_EMAIL', false));

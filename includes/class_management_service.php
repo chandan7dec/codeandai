@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/functions.php';
 
@@ -18,8 +20,6 @@ class ClassManagementService
         $title = trim((string)($input['title'] ?? ''));
         $topic = trim((string)($input['topic'] ?? ''));
         $trainerName = trim((string)($input['trainer_name'] ?? ''));
-        $topic = trim((string)($input['topic'] ?? ''));
-        $trainerName = trim((string)($input['trainer_name'] ?? ''));
         $scheduledAt = trim((string)($input['scheduled_at'] ?? ''));
         $timezone = trim((string)($input['timezone'] ?? ''));
         $teamsLink = trim((string)($input['teams_link'] ?? ''));
@@ -29,16 +29,6 @@ class ClassManagementService
             $errors['title'] = 'Title is required.';
         } elseif (strlen($title) > 255) {
             $errors['title'] = 'Title must be 255 characters or fewer.';
-        }
-        if ($topic === '') {
-            $errors['topic'] = 'Topic is required.';
-        } elseif (strlen($topic) > 255) {
-            $errors['topic'] = 'Topic must be 255 characters or fewer.';
-        }
-        if ($trainerName === '') {
-            $errors['trainer_name'] = 'Trainer name is required.';
-        } elseif (strlen($trainerName) > 255) {
-            $errors['trainer_name'] = 'Trainer name must be 255 characters or fewer.';
         }
         if ($topic === '') {
             $errors['topic'] = 'Topic is required.';
@@ -65,7 +55,72 @@ class ClassManagementService
             $errors['capacity'] = 'Capacity must be a positive whole number or unlimited.';
         }
 
+        // ── Paid class fields ──
+        $errors = array_merge($errors, self::validatePricing($input));
+
         return $errors;
+    }
+
+    /**
+     * Validate is_paid / price combination (data-model.md validation rules):
+     * is_paid is boolean-ish, price is a decimal with max 2 decimal places,
+     * price must be > 0 when is_paid = 1 and 0.00 when is_paid = 0.
+     */
+    public static function validatePricing(array $input): array
+    {
+        $errors = [];
+        $isPaid = self::normalizeIsPaid($input);
+        $priceRaw = $input['price'] ?? ($isPaid ? null : 0);
+
+        if ($priceRaw === null || $priceRaw === '') {
+            if ($isPaid) {
+                $errors['price'] = 'Price is required for a paid class.';
+            } else {
+                return $errors;
+            }
+        } elseif (!is_numeric($priceRaw)) {
+            $errors['price'] = 'Price must be a number.';
+        } else {
+            $price = (float)$priceRaw;
+            if ($price < 0) {
+                $errors['price'] = 'Price cannot be negative.';
+            } elseif (round($price, 2) != $price) {
+                $errors['price'] = 'Price can have at most 2 decimal places.';
+            } elseif ($price > 99999999.99) {
+                $errors['price'] = 'Price is too large.';
+            } elseif ($isPaid && $price <= 0) {
+                $errors['price'] = 'Paid classes require a price greater than 0.';
+            } elseif (!$isPaid && $price != 0) {
+                $errors['price'] = 'Price must be 0 for a free class.';
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Normalize is_paid input (checkbox "1", "true", "on", boolean, int) to 0|1.
+     */
+    public static function normalizeIsPaid(array $input): int
+    {
+        $isPaid = $input['is_paid'] ?? false;
+        if (is_bool($isPaid)) {
+            return $isPaid ? 1 : 0;
+        }
+        return in_array((string)$isPaid, ['1', 'true', 'on', 'yes'], true) ? 1 : 0;
+    }
+
+    /**
+     * Normalize price input to a string with exactly 2 decimals.
+     */
+    public static function normalizePrice(array $input): string
+    {
+        $isPaid = self::normalizeIsPaid($input);
+        $priceRaw = $input['price'] ?? ($isPaid ? 0 : 0);
+        if (!is_numeric($priceRaw)) {
+            return '0.00';
+        }
+        return number_format((float)$priceRaw, 2, '.', '');
     }
 
     public static function canTransition(string $status, bool $open, string $action): bool
@@ -86,6 +141,20 @@ class ClassManagementService
                (SELECT COUNT(*) FROM registrations r WHERE r.demo_class_id = dc.id) AS registration_total
             FROM demo_classes dc
                 ORDER BY dc.scheduled_at ASC";
+        return array_map([$this, 'withAvailability'], $this->query($sql));
+    }
+
+    /**
+     * All active, registration-open classes (used by the public calendar).
+     */
+    public function getActiveClasses(): array
+    {
+        $sql = "SELECT dc.*,
+               (SELECT COUNT(*) FROM registrations r WHERE r.demo_class_id = dc.id AND r.registration_status != 'cancelled') AS registration_count,
+               (SELECT COUNT(*) FROM registrations r WHERE r.demo_class_id = dc.id) AS registration_total
+            FROM demo_classes dc
+            WHERE dc.status = 'active'
+            ORDER BY dc.scheduled_at ASC";
         return array_map([$this, 'withAvailability'], $this->query($sql));
     }
 
@@ -130,10 +199,12 @@ class ClassManagementService
         }
         $id = generateUUID();
         $capacity = ($input['capacity'] ?? '') === '' ? null : (int)$input['capacity'];
+        $isPaid = self::normalizeIsPaid($input);
+        $price = self::normalizePrice($input);
         $this->execute(
-            'INSERT INTO demo_classes (id, title, topic, trainer_name, scheduled_at, timezone, teams_link, status, registration_open, capacity) VALUES (?, ?, ?, ?, ?, ?, ?, \'active\', ?, ?)',
-            [$id, trim($input['title']), trim($input['topic']), trim($input['trainer_name']), trim($input['scheduled_at']), trim($input['timezone']), trim((string)($input['teams_link'] ?? '')) ?: null, !empty($input['registration_open']) ? 1 : 0, $capacity],
-            'sssssssii'
+            'INSERT INTO demo_classes (id, title, topic, trainer_name, scheduled_at, timezone, teams_link, status, registration_open, capacity, is_paid, price) VALUES (?, ?, ?, ?, ?, ?, ?, \'active\', ?, ?, ?, ?)',
+            [$id, trim($input['title']), trim($input['topic']), trim($input['trainer_name']), trim($input['scheduled_at']), trim($input['timezone']), trim((string)($input['teams_link'] ?? '')) ?: null, !empty($input['registration_open']) ? 1 : 0, $capacity, $isPaid, $price],
+            'sssssssiidd'
         );
         return $this->getById($id);
     }
@@ -166,10 +237,26 @@ class ClassManagementService
         if ($capacity !== null && $capacity < (int)$current['registration_count']) {
             throw new RuntimeException('Capacity cannot be lower than active registrations.');
         }
+
+        // Price cannot change while there are pending/confirmed paid registrations
+        // (data-model.md rule 6) — existing payments reference the original amount.
+        $isPaid = self::normalizeIsPaid($input);
+        $price = self::normalizePrice($input);
+        if ((float)$price !== (float)$current['price'] || (int)$isPaid !== (int)($current['is_paid'] ?? 0)) {
+            $paidCountRow = $this->queryOne(
+                "SELECT COUNT(*) AS cnt FROM payments WHERE class_id = ? AND status IN ('initiated','pending','success')",
+                [$id],
+                's'
+            );
+            if ((int)($paidCountRow['cnt'] ?? 0) > 0) {
+                throw new RuntimeException('Price cannot be changed while paid registrations or pending payments exist for this class.');
+        }
+        }
+
         $this->execute(
-            'UPDATE demo_classes SET title = ?, topic = ?, trainer_name = ?, scheduled_at = ?, timezone = ?, teams_link = ?, registration_open = ?, capacity = ? WHERE id = ?',
-            [trim($input['title']), trim($input['topic']), trim($input['trainer_name']), trim($input['scheduled_at']), trim($input['timezone']), trim((string)($input['teams_link'] ?? '')) ?: null, !empty($input['registration_open']) ? 1 : 0, $capacity, $id],
-            'ssssssiis'
+            'UPDATE demo_classes SET title = ?, topic = ?, trainer_name = ?, scheduled_at = ?, timezone = ?, teams_link = ?, registration_open = ?, capacity = ?, is_paid = ?, price = ? WHERE id = ?',
+            [trim($input['title']), trim($input['topic']), trim($input['trainer_name']), trim($input['scheduled_at']), trim($input['timezone']), trim((string)($input['teams_link'] ?? '')) ?: null, !empty($input['registration_open']) ? 1 : 0, $capacity, $isPaid, $price, $id],
+            'sssssssiidds'
         );
         return $this->getById($id);
     }
@@ -209,6 +296,8 @@ class ClassManagementService
         $row['capacity'] = $row['capacity'] === null ? null : (int)$row['capacity'];
         $row['registration_open'] = (bool)$row['registration_open'];
         $row['remaining_capacity'] = $row['capacity'] === null ? null : max(0, $row['capacity'] - $row['registration_count']);
+        $row['is_paid'] = (int)($row['is_paid'] ?? 0);
+        $row['price'] = (float)($row['price'] ?? 0);
         return $row;
     }
 

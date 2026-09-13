@@ -13,7 +13,11 @@ function classApiRequest(url, method, body) {
     if (body) options.body = JSON.stringify(body);
     return fetch(url, options).then(function(response) {
         return response.json().then(function(data) {
-            if (!response.ok) throw new Error(data.error || 'Class operation failed');
+            if (!response.ok) {
+                var error = new Error(data.error || 'Class operation failed');
+                if (data.fields) error.fields = data.fields;
+                throw error;
+            }
             return data;
         });
     });
@@ -23,6 +27,17 @@ function resetClassForm() {
     var form = document.getElementById('classManagementForm');
     if (form) form.reset();
     document.getElementById('classId').value = '';
+    updatePriceFieldState();
+}
+
+// Enable the price input only when the "Is Paid" checkbox is ticked.
+function updatePriceFieldState() {
+    var isPaid = document.getElementById('classIsPaid');
+    var price = document.getElementById('classPrice');
+    if (isPaid && price) {
+        price.disabled = !isPaid.checked;
+        if (!isPaid.checked) price.value = '';
+    }
 }
 
 function editClass(classData) {
@@ -34,6 +49,13 @@ function editClass(classData) {
     document.getElementById('classTimezone').value = classData.timezone || 'UTC';
     document.getElementById('classTeamsLink').value = classData.teams_link || '';
     document.getElementById('classCapacity').value = classData.capacity || '';
+    var isPaid = document.getElementById('classIsPaid');
+    var price = document.getElementById('classPrice');
+    if (isPaid) isPaid.checked = parseInt(classData.is_paid, 10) === 1;
+    if (price) {
+        price.value = classData.is_paid ? (classData.price || '') : '';
+        price.disabled = !isPaid.checked;
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -50,6 +72,88 @@ function deleteClass(id, title) {
         .catch(function(error) { showClassMessage(error.message, true); });
 }
 
+function changeClassStatus(id, action) {
+    classApiRequest('/organizer/api_class_status.php?id=' + encodeURIComponent(id), 'POST', { action: action })
+        .then(function() { window.location.reload(); })
+        .catch(function(error) { showClassMessage(error.message, true); });
+}
+
+// Manual reconciliation: admin override of payment status (missed callbacks).
+function reconcilePayment(paymentId, status) {
+    var action = status === 'success'
+        ? 'Mark this payment as SUCCESS and confirm the registration?'
+        : 'Mark this payment as FAILED and release the seat?';
+    if (!confirm(action + '\nUse this only if the UPI callback was missed.')) return;
+    classApiRequest('/organizer/api_payment_reconcile.php?payment_id=' + encodeURIComponent(paymentId), 'POST', { status: status })
+        .then(function() { window.location.reload(); })
+        .catch(function(error) { showClassMessage(error.message, true); });
+}
+
+// ── Training Resources ──
+
+// Show the YouTube or Drive fields depending on the selected resource type.
+function updateResourceFieldVisibility() {
+    var type = document.getElementById('resType');
+    if (!type) return;
+    document.querySelectorAll('#resourceForm .res-field-group').forEach(function (group) {
+        var kinds = (group.getAttribute('data-for') || '').split(/\s+/);
+        group.hidden = kinds.indexOf(type.value) === -1;
+    });
+}
+
+function setResourceMessage(message, isError) {
+    var element = document.getElementById('resourceMessage');
+    if (!element) return;
+    element.textContent = message;
+    element.style.color = isError ? '#dc2626' : '';
+}
+
+function addResource(event) {
+    event.preventDefault();
+    var classId = document.getElementById('resClassId').value;
+    var type = document.getElementById('resType').value;
+    var payload = {
+        class_id: classId,
+        type: type,
+        title: document.getElementById('resTitle').value.trim(),
+        is_published: document.getElementById('resPublished').value === '1'
+    };
+    if (type === 'recording') {
+        payload.youtube_url = document.getElementById('resYoutubeUrl').value.trim();
+    } else {
+        payload.drive_url = document.getElementById('resDriveUrl').value.trim();
+        var fileName = document.getElementById('resFileName').value.trim();
+        var fileSize = document.getElementById('resFileSize').value.trim();
+        if (fileName) payload.file_name = fileName;
+        if (fileSize) payload.file_size_label = fileSize;
+    }
+    if (!payload.class_id) { setResourceMessage('Select a training class first.', true); return; }
+
+    classApiRequest('/organizer/api_training_resources.php', 'POST', payload)
+        .then(function(data) {
+            setResourceMessage(data.message || 'Resource added.');
+            window.location.reload();
+        })
+        .catch(function(error) {
+            var fields = error.fields || {};
+            var detail = Object.values(fields).join(' ');
+            setResourceMessage((error.message || 'Failed to add resource.') + (detail ? ' — ' + detail : ''), true);
+        });
+}
+
+function toggleResourcePublish(id, publish) {
+    classApiRequest('/organizer/api_training_resources.php?action=publish', 'POST', { id: id, published: publish })
+        .then(function() { window.location.reload(); })
+        .catch(function(error) { setResourceMessage(error.message, true); });
+}
+
+function deleteResource(id) {
+    if (!confirm('Delete this resource? This cannot be undone.')) return;
+    classApiRequest('/organizer/api_training_resources.php?id=' + encodeURIComponent(id), 'DELETE')
+        .then(function() { window.location.reload(); })
+        .catch(function(error) { setResourceMessage(error.message, true); });
+}
+
 function showClassMessage(message, isError) {
     var element = document.getElementById('classManagementMessage');
     if (!element) return;
@@ -59,6 +163,8 @@ function showClassMessage(message, isError) {
 }
 
 function getApiKey() {
+    // Session-authenticated (logged in via login.php): requests need no key.
+    if (window.ORGANIZER_SESSION) return 'session';
     if (API_KEY) return API_KEY;
     
     // Try to get from localStorage
@@ -99,21 +205,33 @@ window.onclick = function(event) {
     }
 };
 
-// Handle follow-up form submission
+// Handle follow-up form submission (see also class form handler below)
 document.addEventListener('DOMContentLoaded', function() {
     var classForm = document.getElementById('classManagementForm');
-    if (classForm) classForm.addEventListener('submit', function(event) {
+    if (classForm) {
+        // Toggle price field availability with the "Is Paid" checkbox.
+        var isPaidCheckbox = document.getElementById('classIsPaid');
+        if (isPaidCheckbox) isPaidCheckbox.addEventListener('change', updatePriceFieldState);
+        updatePriceFieldState();
+
+        classForm.addEventListener('submit', function(event) {
         event.preventDefault();
         var formData = new FormData(classForm);
         var payload = Object.fromEntries(formData.entries());
         payload.registration_open = false;
         if (payload.capacity === '') payload.capacity = null;
+        // "Is Paid" checkbox: absent from FormData when unchecked.
+        payload.is_paid = document.getElementById('classIsPaid').checked ? 1 : 0;
+        if (!payload.is_paid || payload.price === '' || payload.price === undefined) {
+            payload.price = '0.00';
+        }
         var id = payload.id;
         delete payload.id;
         classApiRequest('/organizer/api_demo_classes.php' + (id ? '?id=' + encodeURIComponent(id) : ''), id ? 'PUT' : 'POST', payload)
             .then(function() { window.location.reload(); })
             .catch(function(error) { showClassMessage(error.message, true); });
-    });
+        });
+    }
 
     var followUpForm = document.getElementById('followUpForm');
     if (!followUpForm) return;
@@ -194,4 +312,78 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('organizer_api_key', urlApiKey);
         API_KEY = urlApiKey;
     }
+
+    // Training resources form wiring
+    var resourceForm = document.getElementById('resourceForm');
+    if (resourceForm) {
+        resourceForm.addEventListener('submit', addResource);
+        document.getElementById('resType').addEventListener('change', updateResourceFieldVisibility);
+        updateResourceFieldVisibility();
+    }
+
+    initCollapsibleSections();
 });
+
+// ── Collapsible dashboard sections ──
+// Each section heading toggles its .section-body. State is remembered in
+// localStorage per section id so the layout survives page reloads.
+function initCollapsibleSections() {
+    var STORAGE_KEY = 'organizer_dashboard_sections';
+    var state = {};
+    try {
+        state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        if (typeof state !== 'object' || state === null || Array.isArray(state)) {
+            state = {};
+        }
+    } catch (e) {
+        state = {};
+    }
+
+    function persist() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {
+            /* storage unavailable (private mode) — collapsing just won't persist */
+        }
+    }
+
+    function apply(section, collapsed) {
+        section.classList.toggle('collapsed', collapsed);
+        var toggle = section.querySelector('.section-toggle');
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        }
+    }
+
+    document.querySelectorAll('.collapsible-section').forEach(function(section) {
+        var id = section.id;
+        if (!id) {
+            return;
+        }
+
+        // Restore previous session state
+        if (state[id]) {
+            apply(section, true);
+        }
+
+        var toggle = section.querySelector('.section-toggle');
+        if (!toggle) {
+            return;
+        }
+
+        toggle.addEventListener('click', function() {
+            var collapsed = !section.classList.contains('collapsed');
+            apply(section, collapsed);
+            state[id] = collapsed;
+            persist();
+        });
+
+        // Keyboard support (heading has role="button" + tabindex="0")
+        toggle.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggle.click();
+            }
+        });
+    });
+}
