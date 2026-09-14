@@ -126,11 +126,7 @@ $groups = $service->getPublishedGroupedByClass();
             </article>
         <?php endforeach; ?>
 
-        <footer class="footer">
-            <a href="/training-calendar.php">Training Calendar</a> &middot;
-            <a href="/trainers.php">Our Trainers</a> &middot;
-            <a href="/register.php">Register</a>
-        </footer>
+        <?php siteFooter(); ?>
     </main>
     <script src="/assets/js/resources.js"></script>
 </body>

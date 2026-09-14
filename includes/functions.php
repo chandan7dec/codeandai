@@ -88,6 +88,54 @@ function isValidPhone(string $phone): bool {
 }
 
 /**
+ * Shared site footer.
+ *
+ * Line 1: navigation links to every public page (the current page's own
+ *         link is omitted automatically).
+ * Line 2: centered Instagram-style gradient icon + "Code & AI" wordmark.
+ *
+ * $extra: optional HTML injected above the nav (flow pages use it for
+ *         context notes like "Need help? Contact the organizer").
+ */
+function siteFooter(string $extra = ''): void {
+    $links = [
+        '/' => 'Home',
+        '/training-calendar.php' => 'Training Calendar',
+        '/resources.php' => 'Resources',
+        '/certification.php' => 'Certification',
+        '/trainers.php' => 'Our Trainers',
+        '/register.php' => 'Register',
+        '/dashboard.php' => 'My Dashboard',
+    ];
+    $current = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+    $base = '/' . basename($current);
+    $nav = [];
+    foreach ($links as $href => $label) {
+        if ($href === $current || ($base === $href && $href !== '/')) {
+            continue; // don't link the page the visitor is already on
+        }
+        $nav[] = '<a href="' . $href . '">' . $label . '</a>';
+    }
+    echo '<footer class="footer site-footer">';
+    if ($extra !== '') {
+        echo $extra;
+    }
+    echo '<nav class="footer-nav" aria-label="Site footer">'
+        . implode(' <span class="footer-sep" aria-hidden="true">&middot;</span> ', $nav)
+        . '</nav>';
+    echo '<div class="footer-brand">'
+        . '<svg class="footer-mark" width="18" height="18" viewBox="0 0 48 48" fill="none" aria-hidden="true">'
+        . '<defs><linearGradient id="footerGrad" x1="0" y1="48" x2="48" y2="0">'
+        . '<stop offset="0%" stop-color="#f09433"/><stop offset="50%" stop-color="#dc2743"/><stop offset="100%" stop-color="#bc1888"/></linearGradient></defs>'
+        . '<rect x="2" y="2" width="44" height="44" rx="12" stroke="url(#footerGrad)" stroke-width="4" fill="none"/>'
+        . '<circle cx="24" cy="24" r="10" stroke="url(#footerGrad)" stroke-width="4" fill="none"/>'
+        . '<circle cx="37" cy="11" r="2.5" fill="url(#footerGrad)"/></svg>'
+        . '<span class="footer-wordmark">Code <span class="text-gradient">&amp;</span> AI</span>'
+        . '</div>';
+    echo '</footer>';
+}
+
+/**
  * Format scheduled date for display
  */
 function formatScheduledDate(string $scheduledAt, string $timezone): string {

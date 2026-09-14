@@ -29,7 +29,13 @@ try {
     jsonResponse(['error' => $exception->getMessage()], 404);
 } catch (RuntimeException $exception) {
     jsonResponse(['error' => $exception->getMessage()], 409);
-} catch (Exception $exception) {
-    if (DEBUG) error_log('[API] Class status failed: ' . $exception->getMessage());
-    jsonResponse(['error' => 'Class status update failed'], 500);
+} catch (Throwable $exception) {
+    // Throwable so TypeErrors etc. still return JSON (empty bodies break response.json()).
+    error_log('[API] Class status failed in ' . $exception->getFile() . ':' . $exception->getLine()
+        . ' — ' . $exception->getMessage());
+    jsonResponse([
+        'error' => 'Class status update failed',
+        'detail' => $exception->getMessage(),
+        'at' => basename($exception->getFile()) . ':' . $exception->getLine(),
+    ], 500);
 }

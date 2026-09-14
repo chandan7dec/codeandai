@@ -118,6 +118,7 @@ $successPaid = isset($_GET['paid']);
                 <?php if (empty($enrolledClasses)): ?>
                 <div class="empty-state"><p>No enrolled classes for this filter.</p></div>
                 <?php else: ?>
+                <div class="table-scroll">
                 <table class="registrations-table">
                     <thead><tr><th>Class</th><th>Trainer</th><th>Date</th><th>Type</th><th>Status</th></tr></thead>
                     <tbody>
@@ -138,6 +139,7 @@ $successPaid = isset($_GET['paid']);
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
 
@@ -146,6 +148,7 @@ $successPaid = isset($_GET['paid']);
                 <?php if (empty($payments)): ?>
                 <div class="empty-state"><p>No payments found.</p></div>
                 <?php else: ?>
+                <div class="table-scroll">
                 <table class="registrations-table">
                     <thead><tr><th>Transaction</th><th>Class</th><th>Amount</th><th>Status</th><th>Date</th><th>Receipt</th></tr></thead>
                     <tbody>
@@ -170,14 +173,13 @@ $successPaid = isset($_GET['paid']);
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
         <?php endif; ?>
 
-        <div class="footer">
-            <p><a href="/register.php">Register for a class</a> · <a href="/resources.php">Training resources</a></p>
-        </div>
+        <?php siteFooter('<p class="footer-note"><a href="/register.php">Register for a class</a> · <a href="/resources.php">Training resources</a></p>'); ?>
     </div>
 
     <?php if (!empty($_GET['receipt']) && $registrant): ?>

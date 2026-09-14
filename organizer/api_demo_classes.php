@@ -42,7 +42,18 @@ try {
     jsonResponse(['error' => $exception->getMessage()], 404);
 } catch (RuntimeException $exception) {
     jsonResponse(['error' => $exception->getMessage()], 409);
-} catch (Exception $exception) {
-    if (DEBUG) error_log('[API] Class management failed: ' . $exception->getMessage());
-    jsonResponse(['error' => 'Class management failed'], 500);
+} catch (Throwable $exception) {
+    // Throwable (not just Exception) so TypeErrors etc. still produce a JSON
+    // body — an empty 500 makes the dashboard's response.json() blow up with
+    // "Unexpected end of JSON input" instead of a readable error.
+    error_log('[API] Class management failed in ' . $exception->getFile() . ':' . $exception->getLine()
+        . ' — ' . $exception->getMessage());
+    // The organizer is authenticated, so the real cause (e.g. a MySQL
+    // column/permission error) is safe to show — and far more useful than a
+    // bare "Class management failed". Detail also always lands in the log.
+    jsonResponse([
+        'error' => 'Class management failed',
+        'detail' => $exception->getMessage(),
+        'at' => basename($exception->getFile()) . ':' . $exception->getLine(),
+    ], 500);
 }

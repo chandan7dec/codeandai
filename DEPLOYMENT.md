@@ -56,6 +56,7 @@ index.php
 register.php
 success.php
 trainers.php
+certification.php    (new page — put at root)
 training-calendar.php
 dashboard.php
 payment.php
@@ -90,6 +91,7 @@ organizer/api_training_resources.php
 organizer/export_csv.php
 assets/js/resources.js
 includes/security_headers.php
+sql/schema.sql ← **required** — initDB() fatals every page if missing (fresh hosts only; already present on production)
 robots.txt
 sitemap.xml
 ```
@@ -150,7 +152,7 @@ SELECT COUNT(*) FROM registrants;                -- SAME number as before deploy
    https://learnai.dpdns.org/tools/simulate_upi_callback.php → 403
    ```
    If any returns 200, STOP — the `.htaccess` did not apply (check `AllowOverride`) and the site is leaking data.
-2. **Public pages still work**: `/`, `/register.php`, `/training-calendar.php`, `/resources.php`, `/trainers.php`, `/robots.txt`, `/sitemap.xml` → all **200**.
+2. **Public pages still work**: `/`, `/register.php`, `/training-calendar.php`, `/resources.php`, `/trainers.php`, `/certification.php`, `/robots.txt`, `/sitemap.xml` → all **200**.
 3. **Organizer access**: open `/login.php`, log in with your `ORGANIZER_API_KEY` → dashboard opens with no key in the URL. Check the footer **Log out** link works. Old registrations all still listed (now with the "Registered" date column).
 4. **User dashboard** for one existing email: old enrollments still show.
 5. **Regression**: existing classes show as **Free** on the register page and instant confirmation still works.

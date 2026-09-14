@@ -78,15 +78,14 @@ $loggedIn = !empty($_SESSION['organizer_authenticated']);
                 <?= csrfField() ?>
                 <div class="form-group">
                     <label for="api_key">API key</label>
-                    <input type="password" id="api_key" name="api_key" required autofocus autocomplete="current-password" placeholder="Organizer API key">
+                    <input type="password" id="api_key" name="api_key" required autofocus autocomplete="current-password" placeholder="Enter organizer API key" class="input-lg">
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Log in</button>
             </form>
         </div>
         <?php endif; ?>
 
-        <footer class="footer"><a href="/">Back to home</a></footer>
+        <?php siteFooter(); ?>
     </main>
-    <script src="/assets/js/theme.js"></script>
 </body>
 </html>

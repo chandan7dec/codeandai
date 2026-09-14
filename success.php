@@ -156,9 +156,7 @@ $receipt = $registration['payment_receipt'] ?? null;
             </div>
         </div>
 
-        <div class="footer">
-            <p>Need help? Contact the organizer</p>
-        </div>
+        <?php siteFooter('<p class="footer-note">Need help? Contact the organizer</p>'); ?>
     </div>
 </body>
 </html>

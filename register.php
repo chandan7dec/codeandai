@@ -284,9 +284,7 @@ unset($_SESSION['registration_result']);
         <div class="alert alert-warning" role="status">Registration is currently closed. Please check back later.</div>
         <?php endif; ?>
 
-        <div class="footer">
-            <p>Need help? Contact the organizer</p>
-        </div>
+        <?php siteFooter('<p class="footer-note">Need help? Contact the organizer</p>'); ?>
     </div>
 
     <script src="/assets/js/validation.js"></script>

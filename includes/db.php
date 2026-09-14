@@ -66,6 +66,11 @@ function getDB() {
     }
     
     $conn->set_charset(DB_CHARSET);
+    // Surface query errors as exceptions — without this, a failed prepare()
+    // or execute() returns false silently and every caller can only answer
+    // the browser with a generic "Class management failed" (the real MySQL
+    // error — wrong column, permissions, etc. — was invisible).
+    mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
     $conn->query("SET FOREIGN_KEY_CHECKS = 1");
     
     return $conn;
@@ -240,6 +245,12 @@ function migrateDemoClassManagement(): void {
         if (!in_array('trainer_name', $columns, true)) {
             $conn->exec("ALTER TABLE demo_classes ADD COLUMN trainer_name VARCHAR(255) NOT NULL DEFAULT ''");
         }
+        if (!in_array('teams_link', $columns, true)) {
+            $conn->exec('ALTER TABLE demo_classes ADD COLUMN teams_link VARCHAR(500) NULL DEFAULT NULL');
+        }
+        if (!in_array('timezone', $columns, true)) {
+            $conn->exec("ALTER TABLE demo_classes ADD COLUMN timezone VARCHAR(64) NOT NULL DEFAULT 'UTC'");
+        }
         $conn->exec("UPDATE demo_classes SET topic = title WHERE topic = ''");
         $conn->exec("UPDATE demo_classes SET trainer_name = 'Training Team' WHERE trainer_name = ''");
         return;
@@ -261,6 +272,12 @@ function migrateDemoClassManagement(): void {
     }
     if (!in_array('trainer_name', $columns, true)) {
         $conn->query("ALTER TABLE demo_classes ADD COLUMN trainer_name VARCHAR(255) NOT NULL DEFAULT ''");
+    }
+    if (!in_array('teams_link', $columns, true)) {
+        $conn->query('ALTER TABLE demo_classes ADD COLUMN teams_link VARCHAR(500) NULL DEFAULT NULL');
+    }
+    if (!in_array('timezone', $columns, true)) {
+        $conn->query("ALTER TABLE demo_classes ADD COLUMN timezone VARCHAR(64) NOT NULL DEFAULT 'UTC'");
     }
     $conn->query("UPDATE demo_classes SET topic = title WHERE topic = ''");
     $conn->query("UPDATE demo_classes SET trainer_name = 'Training Team' WHERE trainer_name = ''");

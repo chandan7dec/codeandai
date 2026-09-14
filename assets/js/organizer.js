@@ -8,14 +8,28 @@
 // API key management
 var API_KEY = '';
 
+// Registration state of the class currently loaded into the edit form.
+// New classes default to closed (use the "Open" button after creating); when
+// editing, editClass() seeds this from the class so a save never silently
+// closes a registration that was open.
+var currentEditRegistrationOpen = false;
+
 function classApiRequest(url, method, body) {
     var options = { method: method, headers: { 'X-API-Key': getApiKey(), 'Content-Type': 'application/json' } };
     if (body) options.body = JSON.stringify(body);
     return fetch(url, options).then(function(response) {
-        return response.json().then(function(data) {
+        return response.text().then(function(text) {
+            // Parse defensively: an empty or non-JSON body (network drop, PHP
+            // fatal, proxy timeout) previously crashed response.json() with
+            // "Unexpected end of JSON input" instead of a readable error.
+            var data = {};
+            if (text) {
+                try { data = JSON.parse(text); } catch (e) { data = {}; }
+            }
             if (!response.ok) {
-                var error = new Error(data.error || 'Class operation failed');
+                var error = new Error(data.error || 'Class operation failed (HTTP ' + response.status + ')');
                 if (data.fields) error.fields = data.fields;
+                if (data.detail) error.message += ' — ' + data.detail;
                 throw error;
             }
             return data;
@@ -27,6 +41,7 @@ function resetClassForm() {
     var form = document.getElementById('classManagementForm');
     if (form) form.reset();
     document.getElementById('classId').value = '';
+    currentEditRegistrationOpen = false;
     updatePriceFieldState();
 }
 
@@ -42,6 +57,7 @@ function updatePriceFieldState() {
 
 function editClass(classData) {
     document.getElementById('classId').value = classData.id;
+    currentEditRegistrationOpen = parseInt(classData.registration_open, 10) === 1;
     document.getElementById('classTitle').value = classData.title || '';
     document.getElementById('classTopic').value = classData.topic || '';
     document.getElementById('classTrainerName').value = classData.trainer_name || '';
@@ -218,7 +234,9 @@ document.addEventListener('DOMContentLoaded', function() {
         event.preventDefault();
         var formData = new FormData(classForm);
         var payload = Object.fromEntries(formData.entries());
-        payload.registration_open = false;
+        // Preserve the class's current registration state (hard-coding false
+        // here closed registration on every edit of an existing class).
+        payload.registration_open = currentEditRegistrationOpen;
         if (payload.capacity === '') payload.capacity = null;
         // "Is Paid" checkbox: absent from FormData when unchecked.
         payload.is_paid = document.getElementById('classIsPaid').checked ? 1 : 0;

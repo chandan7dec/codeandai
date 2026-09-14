@@ -213,7 +213,7 @@ class RegistrationService {
                 "INSERT INTO registrations (id, registrant_id, demo_class_id, registration_status, confirmation_message, duplicate_key, submitted_at, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [$registrationId, $registrant['id'], $demoClass['id'], $registrationStatus, $confirmationMessage, $duplicateKey, $now, $now, $now],
-                'ssssssss'
+                'sssssssss'
             );
 
             // For paid classes also create the payment record inside the same

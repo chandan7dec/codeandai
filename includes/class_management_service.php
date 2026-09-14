@@ -40,7 +40,7 @@ class ClassManagementService
         } elseif (strlen($trainerName) > 255) {
             $errors['trainer_name'] = 'Trainer name must be 255 characters or fewer.';
         }
-        if ($scheduledAt === false || strtotime($scheduledAt) === false) {
+        if (self::normalizeScheduledAt($scheduledAt) === null) {
             $errors['scheduled_at'] = 'A valid scheduled date and time is required.';
         }
         try {
@@ -96,6 +96,38 @@ class ClassManagementService
         }
 
         return $errors;
+    }
+
+    /**
+     * Normalize a scheduled_at value to 'Y-m-d H:i:s' (what MySQL DATETIME
+     * columns require).
+     *
+     * The organizer form uses <input type="datetime-local">, which submits
+     * 'YYYY-MM-DDTHH:MM' (with a literal 'T'). SQLite stores it as opaque text
+     * so it happens to work there, but MySQL rejects the 'T' separator on
+     * older versions — the UPDATE fails and the API returns a generic 500
+     * ("Class management failed"). Normalizing here makes every storage
+     * backend receive the same canonical 'YYYY-MM-DD HH:MM:SS' string.
+     *
+     * @return string|null null when the value is not a parseable date/time.
+     */
+    public static function normalizeScheduledAt(string $raw): ?string
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return null;
+        }
+        $normalized = str_replace('T', ' ', $raw);
+        $dt = DateTime::createFromFormat('Y-m-d H:i:s', $normalized)
+            ?: DateTime::createFromFormat('Y-m-d H:i', $normalized);
+        if (!$dt) {
+            return null;
+        }
+        $errors = DateTime::getLastErrors();
+        if (is_array($errors) && ($errors['warning_count'] > 0 || $errors['error_count'] > 0)) {
+            return null;
+        }
+        return $dt->format('Y-m-d H:i:s');
     }
 
     /**
@@ -186,6 +218,7 @@ class ClassManagementService
         foreach ($classes as $class) {
             $class = $this->withAvailability($class);
             $scheduledAt = new DateTimeImmutable($class['scheduled_at'], new DateTimeZone($class['timezone']));
+            $class['is_past'] = $scheduledAt <= $now;
             $calendar[$scheduledAt <= $now ? 'active' : 'upcoming'][] = $class;
         }
         return $calendar;
@@ -203,7 +236,7 @@ class ClassManagementService
         $price = self::normalizePrice($input);
         $this->execute(
             'INSERT INTO demo_classes (id, title, topic, trainer_name, scheduled_at, timezone, teams_link, status, registration_open, capacity, is_paid, price) VALUES (?, ?, ?, ?, ?, ?, ?, \'active\', ?, ?, ?, ?)',
-            [$id, trim($input['title']), trim($input['topic']), trim($input['trainer_name']), trim($input['scheduled_at']), trim($input['timezone']), trim((string)($input['teams_link'] ?? '')) ?: null, !empty($input['registration_open']) ? 1 : 0, $capacity, $isPaid, $price],
+            [$id, trim($input['title']), trim($input['topic']), trim($input['trainer_name']), (string)self::normalizeScheduledAt((string)$input['scheduled_at']), trim($input['timezone']), trim((string)($input['teams_link'] ?? '')) ?: null, !empty($input['registration_open']) ? 1 : 0, $capacity, $isPaid, $price],
             'sssssssiidd'
         );
         return $this->getById($id);
@@ -255,8 +288,8 @@ class ClassManagementService
 
         $this->execute(
             'UPDATE demo_classes SET title = ?, topic = ?, trainer_name = ?, scheduled_at = ?, timezone = ?, teams_link = ?, registration_open = ?, capacity = ?, is_paid = ?, price = ? WHERE id = ?',
-            [trim($input['title']), trim($input['topic']), trim($input['trainer_name']), trim($input['scheduled_at']), trim($input['timezone']), trim((string)($input['teams_link'] ?? '')) ?: null, !empty($input['registration_open']) ? 1 : 0, $capacity, $isPaid, $price, $id],
-            'sssssssiidds'
+            [trim($input['title']), trim($input['topic']), trim($input['trainer_name']), (string)self::normalizeScheduledAt((string)$input['scheduled_at']), trim($input['timezone']), trim((string)($input['teams_link'] ?? '')) ?: null, !empty($input['registration_open']) ? 1 : 0, $capacity, $isPaid, $price, $id],
+            'ssssssiidds'
         );
         return $this->getById($id);
     }

@@ -109,6 +109,11 @@ define('ACTIVE_COURSE_INDEX', (int)config('ACTIVE_COURSE_INDEX', 0));
 // ── WhatsApp ─────────────────────────────────────────────────
 define('WHATSAPP_GROUP_INVITE_URL', config('WHATSAPP_GROUP_INVITE_URL', 'https://chat.whatsapp.com/DsI4j6teaeU72QknuAcX8b'));
 define('WHATSAPP_GROUP_NAME', config('WHATSAPP_GROUP_NAME', 'LearnAI'));
+
+// Dedicated certification-support group (certification.php CTA).
+// Falls back to the general community group when not set in .env.
+define('WHATSAPP_CERT_GROUP_URL', config('WHATSAPP_CERT_GROUP_URL', WHATSAPP_GROUP_INVITE_URL));
+define('WHATSAPP_CERT_GROUP_NAME', config('WHATSAPP_CERT_GROUP_NAME', WHATSAPP_GROUP_NAME . ' Certification'));
 define('WHATSAPP_REDIRECT_BASE', config('WHATSAPP_REDIRECT_BASE', 'https://wa.me'));
 
 // ── UPI Payments (direct UPI integration, no gateway) ───────

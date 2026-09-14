@@ -331,7 +331,7 @@ class TrainingResourceService
                  file_name = ?, file_size_label = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?',
             [$type, $title, $youtubeVideoId, $driveFileId, $fileName, $fileSizeLabel, $id],
-            'sssssssss'
+            'sssssss'
         );
 
         $resource = $this->getById($id);

@@ -101,12 +101,7 @@ function renderTrainerCard(array $trainer): void {
                 <?php foreach ($trainers as $trainer) renderTrainerCard($trainer); ?>
             </div>
         </section>
-        <footer class="footer">
-            <a href="/index.php">Home</a> &middot;
-            <a href="/training-calendar.php">Training Calendar</a> &middot;
-            <a href="/resources.php">Training Resources</a> &middot;
-            <a href="/register.php">Register</a>
-        </footer>
+        <?php siteFooter(); ?>
     </main>
 </body>
 </html>

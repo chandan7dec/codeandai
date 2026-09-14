@@ -172,6 +172,7 @@ $filters = [
                     </div>
                     <button type="submit" class="btn btn-primary" style="width: auto; padding: 8px 20px;">Filter classes</button>
                 </form>
+                <div class="table-scroll">
                 <table class="registrations-table">
                     <thead><tr><th>Training</th><th>Topic</th><th>Trainer</th><th>Status</th><th>Registration</th><th>Price</th><th>Actions</th></tr></thead>
                     <tbody id="classManagementRows">
@@ -200,6 +201,7 @@ $filters = [
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
                 </div>
             </div>
 

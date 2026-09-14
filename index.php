@@ -63,6 +63,11 @@ $whatsappName = WHATSAPP_GROUP_NAME;
 			</div>
 		</section>
 
+		<section class="card landing-cert-card">
+			<div class="feature-row"><span class="feature-icon" aria-hidden="true">🎓</span><div><strong>Certification support</strong><p>The Code &amp; AI team helps you clear all kinds of certifications — cloud, AI, security and more, with free guidance in our dedicated WhatsApp group.</p></div></div>
+			<a href="/certification.php" class="btn btn-secondary">Explore Certification Support</a>
+		</section>
+
 		<?php if ($activeClass): ?>
 		<section class="card landing-class-card">
 			<span class="pill">Next open training</span>
@@ -79,8 +84,7 @@ $whatsappName = WHATSAPP_GROUP_NAME;
 		</section>
 		<?php endif; ?>
 
-		<div class="whatsapp-section"><h3>Join Our <?= sanitize($whatsappName) ?> WhatsApp Group</h3><p>Get training updates, announcements, and reminders</p><a href="<?= sanitize($whatsappUrl) ?>" target="_blank" rel="noopener" class="btn btn-whatsapp">Join Group</a></div>
-		<footer class="footer"><p>Code &amp; AI · <a href="/trainers.php">Our trainers</a> · <a href="/training-calendar.php">View training calendar</a> · <a href="/resources.php">Training resources</a></p></footer>
+		<div class="whatsapp-section"><h3>Join Our <?= sanitize($whatsappName) ?> WhatsApp Group</h3><p>Get training updates, announcements, and reminders</p><a href="<?= sanitize($whatsappUrl) ?>" target="_blank" rel="noopener" class="btn btn-whatsapp">Join Group</a></div>        <?php siteFooter(); ?>
 	</main>
 </body>
 </html>

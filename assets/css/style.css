@@ -28,6 +28,9 @@ body {
     color: var(--ig-text);
     background-color: var(--ig-bg);
     -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%; /* iOS Safari: keep font sizes fixed — no reflow when pinch-zooming */
+    text-size-adjust: 100%;
+    font-size: 1rem;
 }
 
 .theme-toggle {
@@ -100,6 +103,17 @@ html[data-theme="dark"] .theme-icon-sun {
 
 .landing-hero {
     padding: 28px 24px;
+    text-align: center;
+}
+
+/* Certification support teaser card on the landing page */
+.landing-cert-card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: stretch;
+}
+.landing-cert-card .btn {
     text-align: center;
 }
 
@@ -207,6 +221,78 @@ html[data-theme="dark"] .theme-icon-sun {
     gap: 16px;
 }
 
+/* Card top row: date chip + status badge */
+.training-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.training-title {
+    font-size: 1.05rem;
+    line-height: 1.3;
+    margin-bottom: 10px;
+}
+
+.training-meta-line {
+    color: var(--ig-text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.training-meta-line strong {
+    color: var(--ig-text);
+}
+
+/* Stacked action buttons: full-width taps on mobile, auto on desktop */
+.training-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+@media (min-width: 561px) {
+    .training-card-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+}
+
+/* Disabled pseudo-button for completed/closed sessions */
+.btn-disabled {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    background: var(--surface-alt-bg, #f0f0f0);
+    border: 1px solid var(--ig-border);
+    color: var(--ig-text-secondary);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: not-allowed;
+    user-select: none;
+}
+
+/* Completed sessions: visually receded */
+.training-card.is-past {
+    opacity: 0.75;
+}
+
+.training-card.is-past .training-date-chip {
+    background: var(--ig-border);
+    background-image: none;
+}
+
+.badge-muted {
+    background: var(--surface-alt-bg, #e5e5e5);
+    color: var(--ig-text-secondary);
+}
+
 .training-card {
     position: relative;
     background: var(--ig-card);
@@ -235,6 +321,13 @@ html[data-theme="dark"] .theme-icon-sun {
     padding: 20px;
     margin: 0 0 20px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    min-width: 0; /* allow shrink inside grid/flex parents instead of overflowing */
+}
+
+html[data-theme="dark"] .resource-card {
+    background: #1c212d;
+    border-color: #2f3542;
+    box-shadow: none;
 }
 
 .resource-card-heading {
@@ -270,6 +363,12 @@ html[data-theme="dark"] .theme-icon-sun {
     border-radius: 10px;
     padding: 12px;
     background: var(--surface-alt-bg, #fafafa);
+    min-width: 0;
+}
+
+html[data-theme="dark"] .resource-item {
+    background: #232935;
+    border-color: #2f3542;
 }
 
 .resource-recording {
@@ -336,12 +435,16 @@ html[data-theme="dark"] .theme-icon-sun {
 .resource-item-title {
     margin: 0 0 4px;
     font-weight: 600;
+    overflow-wrap: anywhere; /* long file names must wrap, never overflow */
+    word-break: break-word;
 }
 
 .resource-file-meta {
     font-weight: 400;
     font-size: 0.85rem;
     color: var(--text-muted, #555);
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .resource-external-link {
@@ -415,6 +518,101 @@ html[data-theme="dark"] .theme-icon-sun {
 .badge-paid {
     background: var(--paid-badge-bg, #fef3c7);
     color: var(--paid-badge-fg, #92400e);
+}
+
+html[data-theme="dark"] .resource-doc-icon {
+    background: #232935;
+    border-color: #2f3542;
+    color: #d7dce4;
+}
+
+html[data-theme="dark"] .resource-gate-note {
+    background: #232935;
+    border-color: #3a4152;
+}
+
+html[data-theme="dark"] .badge-muted {
+    background: #2a3040;
+    color: #9aa3b2;
+}
+
+/* ─── Resources page: mobile-first layout ───
+   Phones: one column, edge-to-edge feel, no horizontal overflow.
+   The video keeps 16:9 inside the container (never wider than the screen). */
+@media (max-width: 600px) {
+    .container-resources {
+        padding: 16px 14px 0;
+    }
+
+    .resource-card {
+        padding: 16px 14px;
+        border-radius: 12px;
+        margin-bottom: 16px;
+    }
+
+    .resource-card-heading {
+        display: block; /* stack: title block then badge below */
+    }
+
+    .resource-card-heading h3 {
+        font-size: 1.1rem;
+        overflow-wrap: anywhere;
+    }
+
+    .resource-card-heading .badge {
+        display: inline-block;
+        margin-top: 8px;
+    }
+
+    .resource-items {
+        gap: 12px;
+    }
+
+    .resource-item {
+        padding: 12px;
+    }
+
+    /* Document rows stack on phones: icon+title, full-width download below */
+    .resource-doc {
+        flex-wrap: wrap;
+    }
+
+    .resource-doc .resource-item-body {
+        flex: 1 1 calc(100% - 56px); /* leave room for the 42px icon + gap */
+    }
+
+    .resource-doc .resource-download-btn {
+        flex: 1 1 100%;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .video-facade {
+        border-radius: 10px;
+    }
+
+    .video-facade-play {
+        width: 56px;
+        height: 40px;
+        font-size: 18px;
+    }
+
+    .resource-gate-form {
+        flex-direction: column;
+    }
+
+    .resource-gate-form input[type="email"] {
+        width: 100%;
+        min-height: 44px;
+        font-size: 1rem;
+    }
+
+    .resource-gate-form .btn {
+        width: 100%;
+        min-height: 44px;
+    }
 }
 
 /* ─── Theme toggle & footer of resources page keep existing styles ─── */
@@ -492,16 +690,37 @@ html[data-theme="dark"] .theme-icon-sun {
 
     .training-grid {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 20px; /* phone users scroll vertically — keep cards comfortably apart */
     }
 
     .training-card {
-        padding: 16px;
+        padding: 18px 16px 16px;
     }
 
-    .training-card .btn {
-        min-height: 44px;
-        margin-top: 10px;
+    .training-title {
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+    }
+
+    .training-meta-line {
+        font-size: 0.95rem;
+        line-height: 1.55;
+        margin-bottom: 10px;
+    }
+
+    .training-card .btn,
+    .training-card .btn-disabled {
+        width: 100%;
+        min-height: 46px;
+    }
+
+    .training-date-chip {
+        width: 48px;
+        height: 48px;
+    }
+
+    .training-date-chip strong {
+        font-size: 1.35rem;
     }
 }
 
@@ -675,6 +894,7 @@ html[data-theme="dark"] .theme-icon-sun {
 .form-group input[type="text"],
 .form-group input[type="email"],
 .form-group input[type="tel"],
+.form-group input[type="password"],
 .form-group select,
 .form-group textarea {
     width: 100%;
@@ -693,6 +913,18 @@ html[data-theme="dark"] .theme-icon-sun {
     outline: none;
     border-color: var(--ig-text-secondary);
     background: #fff;
+}
+
+/* Larger, clearer input for focused entry (login page) */
+.form-group input.input-lg {
+    padding: 14px 16px;
+    font-size: 1rem;
+    border-radius: 10px;
+}
+
+.form-group input.input-lg:focus {
+    border-color: var(--ig-blue);
+    box-shadow: 0 0 0 3px rgba(0, 149, 246, 0.15);
 }
 
 /* Inline validation error messages */
@@ -1112,6 +1344,17 @@ html[data-theme="dark"] .alert-success {
     -webkit-overflow-scrolling: touch;
 }
 
+/* Generic scroll wrapper so wide tables scroll inside their own box
+   instead of forcing the whole page sideways on phones. */
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll .registrations-table {
+    min-width: 640px; /* readable column widths; the wrapper scrolls */
+}
+
 .registrations-table {
     width: 100%;
     border-collapse: collapse;
@@ -1461,6 +1704,52 @@ html[data-theme="dark"] .payment-hint {
     text-align: center;
     color: var(--ig-text-secondary);
     font-size: 0.75rem;
+}
+
+/* Shared two-line site footer: nav links + centered brand */
+.site-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.footer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px 6px;
+}
+
+.footer-nav a {
+    color: var(--ig-text-secondary);
+    text-decoration: none;
+}
+
+.footer-nav a:hover {
+    color: var(--ig-text);
+    text-decoration: underline;
+}
+
+.footer-sep {
+    opacity: 0.6;
+}
+
+.footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.footer-wordmark {
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.2px;
+    color: var(--ig-text);
+}
+
+.footer-note {
+    margin: 0 0 2px;
 }
 
 .footer a {

@@ -209,6 +209,7 @@ The course catalog (`DEMO_CLASSES` in `config.php`) holds title, date, timezone,
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `WHATSAPP_GROUP_INVITE_URL` | (configured) | WhatsApp group invite link |
+| `WHATSAPP_CERT_GROUP_URL` | falls back to general group | Certification-support WhatsApp group (certification.php) |
 | `WHATSAPP_REDIRECT_BASE` | `https://wa.me` | WhatsApp redirect base |
 
 ### Email (SMTP)

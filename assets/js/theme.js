@@ -1,6 +1,13 @@
 (function () {
     'use strict';
 
+    // Idempotency guard: if this script ever gets included twice (two <script>
+    // tags), the second copy must NOT bind another click listener — otherwise
+    // one click toggles the theme twice and it looks broken. The first copy
+    // remains fully functional.
+    if (window.__codeAndAiThemeLoaded) return;
+    window.__codeAndAiThemeLoaded = true;
+
     var storageKey = 'codeandai-theme';
     var documentElement = document.documentElement;
 

@@ -11,26 +11,33 @@ sendSecurityHeaders();
 $calendar = (new ClassManagementService())->getCalendarClasses();
 
 function renderTrainingCard(array $training): void {
-    $isOpen = $training['registration_open'] && ($training['capacity'] === null || $training['remaining_capacity'] > 0);
+    $isPast = !empty($training['is_past']);
+    $isOpen = !$isPast && $training['registration_open'] && ($training['capacity'] === null || $training['remaining_capacity'] > 0);
+    $badgeClass = $isPast ? 'badge-muted' : ($isOpen ? 'badge-success' : 'badge-warning');
+    $badgeLabel = $isPast ? 'Completed' : ($isOpen ? 'Open' : 'Closed');
+    $calLink = $isPast ? '' : googleCalendarLink($training);
     ?>
-    <article class="training-card">
-        <div class="training-date-chip">
-            <span><?= sanitize(date('M', strtotime($training['scheduled_at']))) ?></span>
-            <strong><?= sanitize(date('d', strtotime($training['scheduled_at']))) ?></strong>
-        </div>
-        <div class="training-card-heading">
-            <div>
-                <p class="training-kicker">Training session</p>
-                <h3><?= sanitize($training['title']) ?></h3>
+    <article class="training-card<?= $isPast ? ' is-past' : '' ?>">
+        <div class="training-card-top">
+            <div class="training-date-chip" aria-hidden="true">
+                <span><?= sanitize(date('M', strtotime($training['scheduled_at']))) ?></span>
+                <strong><?= sanitize(date('d', strtotime($training['scheduled_at']))) ?></strong>
             </div>
-            <span class="badge <?= $isOpen ? 'badge-success' : 'badge-warning' ?>"><?= $isOpen ? 'Open' : 'Closed' ?></span>
+            <span class="badge <?= $badgeClass ?>"><?= $badgeLabel ?></span>
         </div>
+        <h3 class="training-title"><?= sanitize($training['title']) ?></h3>
         <p class="training-topic"><strong>Topic:</strong> <?= sanitize($training['topic']) ?></p>
-        <p><strong>Trainer:</strong> <?= sanitize($training['trainer_name']) ?></p>
-        <p><strong>When:</strong> <?= sanitize(formatScheduledDate($training['scheduled_at'], $training['timezone'])) ?></p>
-        <p><strong>Availability:</strong> <?= $training['capacity'] === null ? 'Unlimited' : (int)$training['remaining_capacity'] . ' seats remaining' ?></p>
-        <?php if ($isOpen): ?><a class="btn btn-primary" href="/register.php">Register</a><?php endif; ?>
-        <?php $calLink = googleCalendarLink($training); if ($calLink): ?><a class="btn btn-secondary" href="<?= sanitize($calLink) ?>" target="_blank" rel="noopener">+ Google Calendar</a><?php endif; ?>
+        <p class="training-meta-line"><strong>Trainer:</strong> <?= sanitize($training['trainer_name']) ?></p>
+        <p class="training-meta-line"><strong>When:</strong> <?= sanitize(formatScheduledDate($training['scheduled_at'], $training['timezone'])) ?></p>
+        <p class="training-meta-line"><strong>Availability:</strong> <?= $training['capacity'] === null ? 'Unlimited' : (int)$training['remaining_capacity'] . ' seats remaining' ?></p>
+        <div class="training-card-actions">
+            <?php if ($isOpen): ?>
+                <a class="btn btn-primary" href="/register.php">Register</a>
+            <?php else: ?>
+                <span class="btn btn-disabled" aria-disabled="true"><?= $isPast ? 'Session completed' : 'Registration closed' ?></span>
+            <?php endif; ?>
+            <?php if ($calLink): ?><a class="btn btn-secondary" href="<?= sanitize($calLink) ?>" target="_blank" rel="noopener">+ Google Calendar</a><?php endif; ?>
+        </div>
     </article>
     <?php
 }
@@ -77,7 +84,7 @@ function renderTrainingCard(array $training): void {
             <?php if ($calendar['upcoming']): ?><div class="training-grid"><?php foreach ($calendar['upcoming'] as $training) renderTrainingCard($training); ?></div>
             <?php else: ?><p class="empty-state">No upcoming training sessions.</p><?php endif; ?>
         </section>
-        <footer class="footer"><a href="/resources.php">Training Resources</a> · <a href="/register.php">Go to registration</a></footer>
+        <?php siteFooter(); ?>
     </main>
 </body>
 </html>
