@@ -89,6 +89,26 @@ $groups = $service->getPublishedGroupedByClass();
                                     <a class="resource-external-link" href="<?= sanitize((string)$res['watch_url']) ?>" target="_blank" rel="noopener">Watch on YouTube &#8599;</a>
                                 </div>
                             </div>
+                        <?php elseif (!empty($res['resource_url'])): ?>
+                            <?php $isCode = $res['type'] === 'code'; ?>
+                            <div class="resource-item resource-doc<?= $isCode ? ' resource-code' : '' ?>">
+                                <span class="resource-doc-icon" aria-hidden="true">
+                                    <?php if ($isCode): ?>
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M16 3l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 8H9a6 6 0 00-6 6v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                                    <?php else: ?>
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 2v6h6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                                    <?php endif; ?>
+                                </span>
+                                <div class="resource-item-body">
+                                    <p class="resource-item-title"><?= sanitize((string)$res['title']) ?><?= $res['file_name'] ? ' <span class="resource-file-meta">(' . sanitize((string)$res['file_name']) . ($res['file_size_label'] ? ' &middot; ' . sanitize((string)$res['file_size_label']) : '') . ')</span>' : '' ?></p>
+                                    <p class="resource-downloads"><?= !empty($res['github_repo']) ? 'GitHub &middot; ' . sanitize((string)$res['github_repo']) : sanitize((string)$res['resource_host']) ?></p>
+                                </div>
+                                <?php if ($isCode): ?>
+                                <a class="btn btn-secondary resource-download-btn" href="<?= sanitize((string)$res['resource_url']) ?>" target="_blank" rel="noopener"><?= !empty($res['github_repo']) ? 'View on GitHub &#8599;' : 'Open code &#8599;' ?></a>
+                                <?php else: ?>
+                                <a class="btn btn-secondary resource-download-btn" href="/download.php?id=<?= sanitize((string)$res['id']) ?>" data-gated="<?= $gated ? '1' : '0' ?>" data-class-id="<?= sanitize((string)$class['id']) ?>" data-resource-title="<?= sanitize((string)$res['title']) ?>">Download</a>
+                                <?php endif; ?>
+                            </div>
                         <?php elseif (in_array($res['type'], ['slides', 'pdf'], true) && !empty($res['drive_file_id'])): ?>
                             <?php $gated = $isPaid && !$service->canDownload((string)$class['id'], null); $hasGated = $hasGated || $gated; ?>
                             <div class="resource-item resource-doc">

@@ -65,14 +65,18 @@ $receipt = $registration['payment_receipt'] ?? null;
                             <label>Class</label>
                             <span><?= sanitize($demoClass['title']) ?></span>
                         </div>
+                        <?php if (($demoClass['topic'] ?? '') !== ''): ?>
                         <div class="detail-item">
                             <label>Topic</label>
-                            <span><?= sanitize($demoClass['topic'] ?? '') ?></span>
+                            <span><?= sanitize((string)$demoClass['topic']) ?></span>
                         </div>
+                        <?php endif; ?>
+                        <?php if (($demoClass['trainer_name'] ?? '') !== ''): ?>
                         <div class="detail-item">
                             <label>Trainer</label>
-                            <span><?= sanitize($demoClass['trainer_name'] ?? '') ?></span>
+                            <span><?= sanitize((string)$demoClass['trainer_name']) ?></span>
                         </div>
+                        <?php endif; ?>
                         <div class="detail-item">
                             <label>Date</label>
                             <span><?= sanitize($demoClass['scheduled_at']) ?></span>

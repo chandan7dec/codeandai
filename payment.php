@@ -58,6 +58,10 @@ if ($status === 'initiated' || $status === 'pending') {
 
 // Success handoff: stash the receipt in the session for success.php.
 if ($status === 'success' && $context) {
+    // Refresh class details (topic/trainer) from the DB so the confirmation
+    // page shows current values even if the session payload predates an edit.
+    $context['demo_class']['topic'] = (string)($demoClass['topic'] ?? ($context['demo_class']['topic'] ?? ''));
+    $context['demo_class']['trainer_name'] = (string)($demoClass['trainer_name'] ?? ($context['demo_class']['trainer_name'] ?? ''));
     $_SESSION['registration_result'] = $context;
     $_SESSION['registration_result']['payment_receipt'] = [
         'merchant_order_id' => $payment['merchant_order_id'],

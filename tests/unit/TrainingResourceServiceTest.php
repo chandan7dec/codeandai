@@ -104,6 +104,34 @@ final class TrainingResourceServiceTest extends \Tests\Support\DatabaseTestCase
         $this->assertArrayHasKey('youtube_url', $errors);
     }
 
+    public function testValidateResourceInputAcceptsAnyHttpsUrlForDocsAndCode(): void
+    {
+        // Any well-formed https URL is valid for slides/pdf/code — no Drive
+        // restriction anymore (issue: "remove the validation for pdf/ppt url").
+        foreach (['slides', 'pdf', 'code'] as $type) {
+            $errors = \TrainingResourceService::validateResourceInput([
+                'class_id' => 'x',
+                'type' => $type,
+                'title' => 'T',
+                'resource_url' => 'https://example.org/materials/session-1.pdf',
+            ]);
+            $this->assertSame([], $errors, "$type with a generic https URL must validate");
+        }
+    }
+
+    public function testValidateResourceInputRejectsNonHttpsForDocsAndCode(): void
+    {
+        foreach (['http://example.org/a.pdf', 'ftp://example.org/a.pdf', 'javascript:alert(1)'] as $bad) {
+            $errors = \TrainingResourceService::validateResourceInput([
+                'class_id' => 'x',
+                'type' => 'pdf',
+                'title' => 'T',
+                'resource_url' => $bad,
+            ]);
+            $this->assertArrayHasKey('resource_url', $errors, "$bad must be rejected");
+        }
+    }
+
     // ── CRUD + hydration ──
 
     private function makePaidClass(bool $open = true): array
@@ -228,6 +256,80 @@ final class TrainingResourceServiceTest extends \Tests\Support\DatabaseTestCase
         $this->service->incrementDownloadCount($res['id']);
         $this->service->incrementDownloadCount($res['id']);
         $this->assertSame(2, $this->service->getById($res['id'])['download_count']);
+    }
+
+    // ── Generic URLs + GitHub code resources ──
+
+    public function testParseGitHubUrlExtractsOwnerRepo(): void
+    {
+        $this->assertSame('octocat/hello-world', $this->service->parseGitHubUrl('https://github.com/octocat/hello-world'));
+        $this->assertSame('octocat/hello-world', $this->service->parseGitHubUrl('https://github.com/octocat/hello-world/tree/main/src'));
+        $this->assertSame('octocat/hello-world', $this->service->parseGitHubUrl('https://github.com/octocat/hello-world/blob/main/README.md'));
+        $this->assertSame('octocat/hello-world', $this->service->parseGitHubUrl('https://www.github.com/octocat/hello-world/pull/12'));
+    }
+
+    public function testParseGitHubUrlRejectsNonGitHubAndIncomplete(): void
+    {
+        $this->assertNull($this->service->parseGitHubUrl('https://gitlab.com/octocat/hello-world'));
+        $this->assertNull($this->service->parseGitHubUrl('https://github.com/'));
+        $this->assertNull($this->service->parseGitHubUrl('https://github.com/only-owner'));
+        $this->assertNull($this->service->parseGitHubUrl(''));
+    }
+
+    public function testAddPdfResourceWithGenericHttpsUrl(): void
+    {
+        $class = $this->makePaidClass();
+        $res = $this->service->addResource([
+            'class_id'     => $class['id'],
+            'type'         => 'pdf',
+            'title'        => 'Cheat Sheet',
+            'resource_url' => 'https://cdn.example.org/materials/python-cheatsheet.pdf',
+            'file_name'    => 'python-cheatsheet.pdf',
+        ]);
+        $this->assertSame('https://cdn.example.org/materials/python-cheatsheet.pdf', $res['resource_download_url']);
+        $this->assertSame('cdn.example.org', $res['resource_host']);
+        $this->assertNull($res['drive_file_id']);
+    }
+
+    public function testAddCodeResourceFromGitHubUrl(): void
+    {
+        $class = $this->makePaidClass();
+        $res = $this->service->addResource([
+            'class_id'     => $class['id'],
+            'type'         => 'code',
+            'title'        => 'Workshop Starter Repo',
+            'resource_url' => 'https://github.com/codeandai/workshop-starter/tree/main',
+        ]);
+        $this->assertSame('https://github.com/codeandai/workshop-starter/tree/main', $res['resource_download_url']);
+        $this->assertSame('codeandai/workshop-starter', $res['github_repo']);
+    }
+
+    public function testAddCodeResourceRejectsNonHttps(): void
+    {
+        $class = $this->makePaidClass();
+        $this->expectException(\InvalidArgumentException::class);
+        $this->service->addResource([
+            'class_id'     => $class['id'],
+            'type'         => 'code',
+            'title'        => 'Bad',
+            'resource_url' => 'http://github.com/codeandai/repo',
+        ]);
+    }
+
+    public function testUpdateResourceCanSwapDriveUrlForGenericUrl(): void
+    {
+        $class = $this->makePaidClass();
+        $res = $this->service->addResource([
+            'class_id'  => $class['id'],
+            'type'      => 'slides',
+            'title'     => 'Deck',
+            'drive_url' => 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz1234567890/view',
+        ]);
+        $updated = $this->service->updateResource($res['id'], [
+            'resource_url' => 'https://notion.site/codeandai/session-1-deck',
+        ]);
+        $this->assertSame('slides', $updated['type']);
+        $this->assertSame('https://notion.site/codeandai/session-1-deck', $updated['resource_download_url']);
     }
 
     // ── Gating ──

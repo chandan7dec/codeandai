@@ -412,7 +412,7 @@ $filters = [
             <div class="registrations-section collapsible-section" style="margin-top: 8px;" id="sec-resources">
                 <h2 class="section-toggle" role="button" tabindex="0" aria-expanded="true" aria-controls="sec-resources-body">Training Resources<span class="section-toggle-chevron" aria-hidden="true"></span></h2>
                 <div class="section-body" id="sec-resources-body">
-                <p class="help-text" style="margin-bottom: 12px;">Attach a YouTube recording and/or Google Drive slides/PDF to a training. Materials appear on the public <a href="/resources.php" target="_blank">Training Resources</a> page once the class date has passed. Drive files must be shared as &ldquo;Anyone with the link &rarr; Viewer&rdquo;.</p>
+                <p class="help-text" style="margin-bottom: 12px;">Attach a YouTube recording and/or links to a training: recordings (YouTube), slides/PDF (Google Drive — shared as &ldquo;Anyone with the link &rarr; Viewer&rdquo;) or code (GitHub). Other https links work too. Materials appear on the public <a href="/resources.php" target="_blank">Training Resources</a> page once the class date has passed.</p>
 
                 <form id="resourceForm" class="filters-form" style="align-items: flex-end;">
                     <div class="filter-group">
@@ -430,6 +430,7 @@ $filters = [
                             <option value="recording">Recording (YouTube)</option>
                             <option value="slides">Slides (Google Drive)</option>
                             <option value="pdf">PDF (Google Drive)</option>
+                            <option value="code">Code (GitHub)</option>
                         </select>
                     </div>
                     <div class="filter-group">
@@ -440,15 +441,15 @@ $filters = [
                         <label for="resYoutubeUrl">YouTube link</label>
                         <input type="url" id="resYoutubeUrl" placeholder="https://youtu.be/&hellip; or youtube.com/watch?v=&hellip;">
                     </div>
-                    <div class="filter-group res-field-group" data-for="slides pdf" hidden>
-                        <label for="resDriveUrl">Google Drive link</label>
-                        <input type="url" id="resDriveUrl" placeholder="https://drive.google.com/file/d/&hellip;/view">
+                    <div class="filter-group res-field-group" data-for="slides pdf code" hidden>
+                        <label for="resDriveUrl">Resource link (https)</label>
+                        <input type="url" id="resDriveUrl" placeholder="https://github.com/owner/repo, drive.google.com&hellip;">
                     </div>
-                    <div class="filter-group res-field-group" data-for="slides pdf" hidden>
+                    <div class="filter-group res-field-group" data-for="slides pdf code" hidden>
                         <label for="resFileName">File name (optional)</label>
                         <input type="text" id="resFileName" placeholder="intro-to-python.pdf">
                     </div>
-                    <div class="filter-group res-field-group" data-for="slides pdf" hidden>
+                    <div class="filter-group res-field-group" data-for="slides pdf code" hidden>
                         <label for="resFileSize">Size (optional)</label>
                         <input type="text" id="resFileSize" placeholder="2.4 MB" maxlength="20">
                     </div>

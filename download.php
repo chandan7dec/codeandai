@@ -99,6 +99,12 @@ if (!empty($resource['drive_download_url'])) {
     exit;
 }
 
+// Generic https resources (GitHub, other doc hosts) open in a new tab.
+if (!empty($resource['resource_url'])) {
+    header('Location: ' . $resource['resource_url']);
+    exit;
+}
+
 // Future-proofing: a resource with a local file_url is streamed directly.
 if (!empty($resource['file_url'])) {
     $path = realpath(__DIR__ . '/' . ltrim((string)$resource['file_url'], '/'));

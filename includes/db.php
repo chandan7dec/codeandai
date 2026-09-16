@@ -531,10 +531,11 @@ function migrateTrainingResources(): void {
                 id VARCHAR(36) NOT NULL PRIMARY KEY,
                 class_id VARCHAR(36) NOT NULL,
                 type VARCHAR(20) NOT NULL
-                    CHECK (type IN ('recording','slides','pdf')),
+                    CHECK (type IN ('recording','slides','pdf','code')),
                 title VARCHAR(255) NOT NULL,
                 youtube_video_id VARCHAR(20) NULL DEFAULT NULL,
                 drive_file_id VARCHAR(64) NULL DEFAULT NULL,
+                resource_url VARCHAR(500) NULL DEFAULT NULL,
                 file_name VARCHAR(255) NULL DEFAULT NULL,
                 file_size_label VARCHAR(20) NULL DEFAULT NULL,
                 download_count INTEGER NOT NULL DEFAULT 0,
@@ -552,10 +553,11 @@ function migrateTrainingResources(): void {
         CREATE TABLE IF NOT EXISTS training_resources (
             id VARCHAR(36) NOT NULL PRIMARY KEY,
             class_id VARCHAR(36) NOT NULL,
-            type ENUM('recording','slides','pdf') NOT NULL,
+            type ENUM('recording','slides','pdf','code') NOT NULL,
             title VARCHAR(255) NOT NULL,
             youtube_video_id VARCHAR(20) NULL DEFAULT NULL,
             drive_file_id VARCHAR(64) NULL DEFAULT NULL,
+            resource_url VARCHAR(500) NULL DEFAULT NULL,
             file_name VARCHAR(255) NULL DEFAULT NULL,
             file_size_label VARCHAR(20) NULL DEFAULT NULL,
             download_count INT NOT NULL DEFAULT 0,
@@ -587,6 +589,66 @@ function rollbackTrainingResources(): void {
 }
 
 /**
+ * Post-create upgrade of training_resources for databases created by older
+ * versions of the app:
+ *  - adds the resource_url column (any https link: GitHub, other doc hosts)
+ *  - widens the MySQL ENUM type to include 'code' (GitHub links)
+ *
+ * The ALTERs are wrapped defensively — free hosts sometimes revoke ALTER
+ * privileges; the report of what could not be applied surfaces via health.php.
+ *
+ * Idempotent: safe to run on every request.
+ */
+function migrateTrainingResourcesV2(): void {
+    $conn = getDB();
+
+    $columns = [];
+    if ($conn instanceof PDO) {
+        foreach ($conn->query('PRAGMA table_info(training_resources)') as $column) {
+            $columns[] = $column['name'];
+        }
+    } else {
+        $result = $conn->query('SHOW COLUMNS FROM training_resources');
+        while ($result && ($column = $result->fetch_assoc())) {
+            $columns[] = $column['Field'];
+        }
+    }
+
+    if (in_array('id', $columns, true) === false) {
+        // Table absent (fresh host): migrateTrainingResources() just created it.
+        return;
+    }
+
+    try {
+        if (!in_array('resource_url', $columns, true)) {
+            if ($conn instanceof PDO) {
+                $conn->exec('ALTER TABLE training_resources ADD COLUMN resource_url VARCHAR(500) NULL DEFAULT NULL');
+            } else {
+                $conn->query('ALTER TABLE training_resources ADD COLUMN resource_url VARCHAR(500) NULL DEFAULT NULL');
+            }
+        }
+
+        if (!$conn instanceof PDO) {
+            // MySQL only: widen the type ENUM to accept 'code'.
+            $typeDef = '';
+            $result = $conn->query("SHOW COLUMNS FROM training_resources LIKE 'type'");
+            if ($result && ($row = $result->fetch_assoc())) {
+                $typeDef = (string)($row['Type'] ?? '');
+            }
+            if (strpos($typeDef, "'code'") === false) {
+                $conn->query(
+                    "ALTER TABLE training_resources MODIFY type ENUM('recording','slides','pdf','code') NOT NULL"
+                );
+            }
+        }
+    } catch (Exception $e) {
+        if (DEBUG) {
+            error_log('[DB] training_resources upgrade warning: ' . $e->getMessage());
+        }
+    }
+}
+
+/**
  * Run startup tasks (init DB, migrations, seed data)
  */
 function runStartup(): void {
@@ -596,5 +658,6 @@ function runStartup(): void {
     migratePaidClasses();
     migratePayments();
     migrateTrainingResources();
+    migrateTrainingResourcesV2();
     seedDemoClasses();
 }

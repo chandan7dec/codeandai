@@ -22,7 +22,8 @@ require_once __DIR__ . '/functions.php';
 
 class TrainingResourceService
 {
-    public const TYPES = ['recording', 'slides', 'pdf'];
+    /** Recording (YouTube), slides/pdf (any https URL, typically Google Drive) and code (GitHub repo/link). */
+    public const TYPES = ['recording', 'slides', 'pdf', 'code'];
 
     /** @var \PDO|\mysqli */
     private $db;
@@ -136,6 +137,78 @@ class TrainingResourceService
         ];
     }
 
+    /**
+     * Extract a GitHub repository id ("owner/repo") from any common GitHub
+     * URL shape. Accepts repo roots, tree branches, blob file pages and
+     * pull requests — everything else falls back to storing the raw URL.
+     *
+     * @return string|null "owner/repo", or null if the URL is not GitHub
+     */
+    public function parseGitHubUrl(string $url): ?string
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return null;
+        }
+
+        $host = strtolower((string)parse_url($url, PHP_URL_HOST));
+        $host = preg_replace('/^www\./', '', $host) ?? $host;
+        if ($host !== 'github.com' && !str_ends_with($host, '.github.com')) {
+            return null;
+        }
+
+        $path = trim((string)parse_url($url, PHP_URL_PATH), '/');
+        if ($path === '') {
+            return null;
+        }
+
+        $segments = explode('/', $path);
+        if (count($segments) < 2) {
+            return null;
+        }
+
+        $owner = $segments[0];
+        $repo = $segments[1];
+        if ($owner === '' || $repo === '') {
+            return null;
+        }
+
+        return $owner . '/' . $repo;
+    }
+
+    /**
+     * Resolve any https URL into a stored link for non-recording resources.
+     *
+     * Returns a shape that depends on the URL kind:
+     *  - Google Drive share/download links → drive_file_id (+ download_url)
+     *  - GitHub links                        → repo id in resource_url
+     *  - any other https URL                 → stored verbatim in resource_url
+     * Non-https URLs are rejected (http-only hosts are not supported).
+     *
+     * @return array{resource_url: string, drive_file_id: string|null}|null
+     */
+    public function parseResourceUrl(string $url): ?array
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return null;
+        }
+
+        $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+        if ($scheme !== 'https') {
+            return null;
+        }
+
+        // Google Drive keeps the lightweight id + direct-download URL path.
+        $drive = $this->parseDriveUrl($url);
+        if ($drive !== null) {
+            return ['resource_url' => '', 'drive_file_id' => $drive['drive_file_id']];
+        }
+
+        // Everything else (GitHub, any https doc host) stores the URL as-is.
+        return ['resource_url' => $url, 'drive_file_id' => null];
+    }
+
     // ─────────────────────────────────────────────────────────────
     // Validation
     // ─────────────────────────────────────────────────────────────
@@ -176,8 +249,13 @@ class TrainingResourceService
                 $errors['youtube_url'] = 'That does not look like a valid YouTube video link.';
             }
         } elseif ($type !== '') {
-            if ($driveUrl === '') {
-                $errors['drive_url'] = 'A Google Drive link is required for slides/PDF.';
+            // Slides/PDF/code: any https URL is accepted (Google Drive, GitHub,
+            // S3, a corporate wiki …). Only a well-formed https link is required.
+            $url = $driveUrl !== '' ? $driveUrl : trim((string)($input['resource_url'] ?? ''));
+            if ($url === '') {
+                $errors['resource_url'] = 'A https link is required for ' . $type . ' resources.';
+            } elseif ((new self())->parseResourceUrl($url) === null) {
+                $errors['resource_url'] = 'Only https:// links are supported (e.g. Google Drive, GitHub).';
             }
         }
 
@@ -220,17 +298,22 @@ class TrainingResourceService
         $type = trim((string)$input['type']);
         $youtubeVideoId = null;
         $driveFileId = null;
+        $resourceUrl = null;
 
         if ($type === 'recording') {
             $youtubeVideoId = $this->parseYouTubeId((string)($input['youtube_url'] ?? ''));
         } else {
-            $drive = $this->parseDriveUrl((string)($input['drive_url'] ?? ''));
-            if ($drive === null) {
+            $url = trim((string)($input['drive_url'] ?? '')) !== ''
+                ? (string)$input['drive_url']
+                : (string)($input['resource_url'] ?? '');
+            $parsed = $this->parseResourceUrl($url);
+            if ($parsed === null) {
                 throw new InvalidArgumentException((string)json_encode([
-                    'drive_url' => 'That does not look like a valid Google Drive link.',
+                    'resource_url' => 'Only https:// links are supported (e.g. Google Drive, GitHub).',
                 ]));
             }
-            $driveFileId = $drive['drive_file_id'];
+            $driveFileId = $parsed['drive_file_id'];
+            $resourceUrl = $parsed['resource_url'] !== '' ? $parsed['resource_url'] : null;
         }
 
         $id = generateUUID();
@@ -245,10 +328,10 @@ class TrainingResourceService
 
         $this->execute(
             'INSERT INTO training_resources
-                (id, class_id, type, title, youtube_video_id, drive_file_id, file_name, file_size_label, is_published)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [$id, $classId, $type, $title, $youtubeVideoId, $driveFileId, $fileName, $fileSizeLabel, $isPublished],
-            'ssssssssi'
+                (id, class_id, type, title, youtube_video_id, drive_file_id, resource_url, file_name, file_size_label, is_published)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [$id, $classId, $type, $title, $youtubeVideoId, $driveFileId, $resourceUrl, $fileName, $fileSizeLabel, $isPublished],
+            'sssssssssi'
         );
 
         $resource = $this->getById($id);
@@ -299,10 +382,12 @@ class TrainingResourceService
 
         $youtubeVideoId = $existing['youtube_video_id'];
         $driveFileId = $existing['drive_file_id'];
+        $resourceUrl = $existing['resource_url'] ?? null;
 
         // If a new URL is supplied, re-parse it (and keep type consistent).
         $youtubeUrl = trim((string)($input['youtube_url'] ?? ''));
         $driveUrl = trim((string)($input['drive_url'] ?? ''));
+        $resourceUrlInput = trim((string)($input['resource_url'] ?? ''));
         if ($youtubeUrl !== '') {
             $parsed = $this->parseYouTubeId($youtubeUrl);
             if ($parsed === null) {
@@ -312,26 +397,30 @@ class TrainingResourceService
             }
             $youtubeVideoId = $parsed;
             $type = 'recording';
-        } elseif ($driveUrl !== '') {
-            $parsed = $this->parseDriveUrl($driveUrl);
-            if ($parsed === null) {
-                throw new InvalidArgumentException((string)json_encode([
-                    'drive_url' => 'That does not look like a valid Google Drive link.',
-                ]));
-            }
-            $driveFileId = $parsed['drive_file_id'];
-            if ($type === 'recording') {
-                $type = 'slides';
+        } else {
+            $newUrl = $driveUrl !== '' ? $driveUrl : $resourceUrlInput;
+            if ($newUrl !== '') {
+                $parsed = $this->parseResourceUrl($newUrl);
+                if ($parsed === null) {
+                    throw new InvalidArgumentException((string)json_encode([
+                        'resource_url' => 'Only https:// links are supported (e.g. Google Drive, GitHub).',
+                    ]));
+                }
+                $driveFileId = $parsed['drive_file_id'];
+                $resourceUrl = $parsed['resource_url'] !== '' ? $parsed['resource_url'] : null;
+                if ($type === 'recording') {
+                    $type = 'slides';
+                }
             }
         }
 
         $this->execute(
             'UPDATE training_resources
-             SET type = ?, title = ?, youtube_video_id = ?, drive_file_id = ?,
+             SET type = ?, title = ?, youtube_video_id = ?, drive_file_id = ?, resource_url = ?,
                  file_name = ?, file_size_label = ?, updated_at = CURRENT_TIMESTAMP
              WHERE id = ?',
-            [$type, $title, $youtubeVideoId, $driveFileId, $fileName, $fileSizeLabel, $id],
-            'sssssss'
+            [$type, $title, $youtubeVideoId, $driveFileId, $resourceUrl, $fileName, $fileSizeLabel, $id],
+            'sssssssss'
         );
 
         $resource = $this->getById($id);
@@ -546,6 +635,15 @@ class TrainingResourceService
 
         if (!empty($row['drive_file_id'])) {
             $row['drive_download_url'] = 'https://drive.google.com/uc?export=download&id=' . $row['drive_file_id'];
+        }
+
+        if (!empty($row['resource_url'])) {
+            $row['resource_download_url'] = (string)$row['resource_url'];
+            $row['resource_host'] = strtolower((string)(parse_url((string)$row['resource_url'], PHP_URL_HOST) ?: ''));
+            $row['resource_host'] = preg_replace('/^(www)\./', '', $row['resource_host']) ?? $row['resource_host'];
+            if (str_ends_with($row['resource_host'], 'github.com')) {
+                $row['github_repo'] = $this->parseGitHubUrl((string)$row['resource_url']);
+            }
         }
 
         return $row;

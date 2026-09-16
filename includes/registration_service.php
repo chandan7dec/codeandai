@@ -259,6 +259,8 @@ class RegistrationService {
             'demo_class' => [
                 'id' => $demoClass['id'],
                 'title' => $demoClass['title'],
+                'topic' => (string)($demoClass['topic'] ?? ''),
+                'trainer_name' => (string)($demoClass['trainer_name'] ?? ''),
                 'scheduled_at' => $formattedDate,
                 'timezone' => $demoClass['timezone'],
                 'teams_link' => $demoClass['teams_link'],
