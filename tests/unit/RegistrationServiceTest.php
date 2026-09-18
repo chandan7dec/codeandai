@@ -44,6 +44,40 @@ final class RegistrationServiceTest extends \Tests\Support\DatabaseTestCase
         $this->assertSame(0, (int)$stmt->fetchColumn());
     }
 
+    public function testClassSpecificRegistrationRegistersClickedClass(): void
+    {
+        // Two open classes exist: class-paid (earliest) and class-free (2030).
+        // Registering with an explicit classId must target THAT class,
+        // not silently fall back to the earliest open one.
+        $service = new \RegistrationService();
+        $result = $service->createRegistration('Clicked User', 'clicked@example.com', '9876512349', false, 'class-free');
+
+        $this->assertFalse($result['requires_payment']);
+        $this->assertSame('confirmed', $result['registration']['status']);
+        $this->assertSame('class-free', $result['demo_class']['id']);
+    }
+
+    public function testClassSpecificRegistrationRejectsClosedClass(): void
+    {
+        $db = \getDB();
+        $db->exec("UPDATE demo_classes SET registration_open = 0 WHERE id = 'class-free'");
+
+        $service = new \RegistrationService();
+        try {
+            $service->createRegistration('Late User', 'late@example.com', '9876512350', false, 'class-free');
+            $this->fail('Expected InvalidArgumentException for closed class');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('not open for registration', $e->getMessage());
+        }
+    }
+
+    public function testClassSpecificRegistrationRejectsInvalidId(): void
+    {
+        $service = new \RegistrationService();
+        $this->expectException(\InvalidArgumentException::class);
+        $service->createRegistration('Bad User', 'bad@example.com', '9876512351', false, "bad' OR 1=1 --");
+    }
+
     public function testDuplicateRegistrationRejectedWhilePending(): void
     {
         $service = new \RegistrationService();

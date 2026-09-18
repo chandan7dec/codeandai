@@ -32,7 +32,7 @@ function renderTrainingCard(array $training): void {
         <p class="training-meta-line"><strong>Availability:</strong> <?= $training['capacity'] === null ? 'Unlimited' : (int)$training['remaining_capacity'] . ' seats remaining' ?></p>
         <div class="training-card-actions">
             <?php if ($isOpen): ?>
-                <a class="btn btn-primary" href="/register.php">Register</a>
+                <a class="btn btn-primary" href="/register.php?class=<?= sanitize(urlencode((string)$training['id'])) ?>">Register</a>
             <?php else: ?>
                 <span class="btn btn-disabled" aria-disabled="true"><?= $isPast ? 'Session completed' : 'Registration closed' ?></span>
             <?php endif; ?>

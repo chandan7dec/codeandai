@@ -24,7 +24,20 @@ runStartup();
 sendSecurityHeaders();
 
 $formHeading = REGISTRATION_FORM_HEADING;
-$activeClass = (new ClassManagementService())->getOpenClass();
+$classService = new ClassManagementService();
+// Which class is this page for?
+//  - ?class=ID  -> the Register button on the training calendar
+//  - otherwise  -> earliest open class (previous behaviour)
+$requestedClass = null;
+$rawClassParam = trim((string)($_GET['class'] ?? ''));
+if ($rawClassParam !== '' && preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $rawClassParam)) {
+    $requestedClass = $classService->getById($rawClassParam);
+    if ($requestedClass && $requestedClass['status'] === 'active' && !empty($requestedClass['registration_open']) && empty($requestedClass['is_past'])) {
+    } else {
+        $requestedClass = null;
+    }
+}
+$activeClass = $requestedClass ?? $classService->getOpenClass();
 $error = '';
 $formData = [
     'name' => '',
@@ -51,6 +64,7 @@ if (isMethod('POST')) {
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $phone_number = trim($_POST['phone_number'] ?? '');
+    $postedClassId = trim((string)($_POST['class_id'] ?? ''));
     
     $formData = [
         'name' => $name,
@@ -82,7 +96,7 @@ if (isMethod('POST')) {
     } else {
         try {
             $service = new RegistrationService();
-            $result = $service->createRegistration($name, $email, $phone_number);
+            $result = $service->createRegistration($name, $email, $phone_number, false, $postedClassId !== '' ? $postedClassId : null);
 
             // Paid class: hand over to the UPI payment page. The registration is
             // created with status 'pending'; the email/WhatsApp flow only runs
@@ -227,6 +241,7 @@ unset($_SESSION['registration_result']);
         <?php if ($activeClass): ?>
         <form method="POST" action="/register.php" class="registration-form" novalidate>
             <?= csrfField() ?>
+            <input type="hidden" name="class_id" value="<?= sanitize($activeClass['id']) ?>">
             <div class="form-group">
                 <label for="name">Full Name</label>
                 <input

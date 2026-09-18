@@ -150,7 +150,7 @@ class RegistrationService {
     /**
      * Create a new registration
      */
-    public function createRegistration(string $name, string $email, string $phone, bool $whatsappConsent = false): array {
+    public function createRegistration(string $name, string $email, string $phone, bool $whatsappConsent = false, ?string $classId = null): array {
         // Validate input data
         $errors = $this->validateRegistrationData($name, $email, $phone);
         if (!empty($errors)) {
@@ -168,11 +168,28 @@ class RegistrationService {
 
             // Lock the selected class row so concurrent requests cannot pass the same capacity check.
             $classLock = $this->db instanceof PDO ? '' : ' FOR UPDATE';
-            $demoClass = $this->queryOne(
-                "SELECT * FROM demo_classes WHERE status = 'active' AND registration_open = 1 ORDER BY scheduled_at ASC LIMIT 1$classLock"
-            );
-            if (!$demoClass) {
-                throw new InvalidArgumentException("No active demo class is currently available. Please contact the organizer.");
+            if ($classId !== null && $classId !== '') {
+                // A specific class was requested (e.g. Register button on the
+                // training calendar): register against exactly that class,
+                // not just the earliest open one.
+                if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $classId)) {
+                    throw new InvalidArgumentException("Invalid class selection.");
+                }
+                $demoClass = $this->queryOne(
+                    "SELECT * FROM demo_classes WHERE id = ? AND status = 'active' AND registration_open = 1$classLock",
+                    [$classId],
+                    's'
+                );
+                if (!$demoClass) {
+                    throw new InvalidArgumentException("That class is not open for registration. Please pick another class from the training calendar.");
+                }
+            } else {
+                $demoClass = $this->queryOne(
+                    "SELECT * FROM demo_classes WHERE status = 'active' AND registration_open = 1 ORDER BY scheduled_at ASC LIMIT 1$classLock"
+                );
+                if (!$demoClass) {
+                    throw new InvalidArgumentException("No active demo class is currently available. Please contact the organizer.");
+                }
             }
 
             $countRow = $this->queryOne(
